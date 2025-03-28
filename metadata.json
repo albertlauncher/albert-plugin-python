@@ -7,5 +7,5 @@
     "name": "Python plugins",
     "name[de]": "Python-Plugins",
     "plugin_dependencies": ["applications"],
-    "url": "https://github.com/albertlauncher/plugins/tree/main/python"
+    "url": "https://github.com/albertlauncher/albert-plugin-python"
 }
