@@ -3,9 +3,9 @@ project(python VERSION 6.7)
 
 find_package(Albert REQUIRED)
 
+find_package(pybind11 REQUIRED)
 set(PYBIND11_FINDPYTHON ON)
 #find_package(Python 3.8 COMPONENTS Interpreter Development REQUIRED)
-add_subdirectory(pybind11)
 
 albert_plugin(
     INCLUDE PRIVATE $<TARGET_PROPERTY:albert::applications,INTERFACE_INCLUDE_DIRECTORIES>
