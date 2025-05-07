@@ -17,14 +17,15 @@
 #include <QSettings>
 #include <QTextEdit>
 #include <QUrl>
-#include <albert/albert.h>
+#include <albert/widgetsutil.h>
 #include <albert/extensionregistry.h>
 #include <albert/logging.h>
 #include <chrono>
 ALBERT_LOGGING_CATEGORY("python")
 using namespace albert;
-using namespace std;
 using namespace chrono;
+using namespace std;
+using namespace util;
 using std::filesystem::path;
 namespace py = pybind11;
 #define XSTR(s) STR(s)

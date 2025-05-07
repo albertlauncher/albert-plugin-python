@@ -23,6 +23,7 @@
 #include <albert/pluginmetadata.h>
 using namespace albert;
 using namespace std;
+using namespace util;
 
 
 #define CATCH_PYBIND11_OVERRIDE_PURE(ret, base, func, ...) \

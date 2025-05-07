@@ -12,10 +12,11 @@
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QtConcurrentRun>
-#include <albert/albert.h>
+#include <albert/widgetsutil.h>
 namespace py = pybind11;
 using namespace albert;
 using namespace std;
+using namespace util;
 
 static const char *ATTR_PLUGIN_CLASS   = "Plugin";
 static const char *ATTR_MD_IID         = "md_iid";
