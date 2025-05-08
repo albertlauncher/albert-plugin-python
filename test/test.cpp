@@ -2,14 +2,15 @@
 
 #include "cast_specialization.hpp"
 
-#include "albert/query.h"
-#include "albert/indexqueryhandler.h"
-#include "albert/fallbackhandler.h"
 #include "albert/action.h"
+#include "albert/fallbackhandler.h"
+#include "albert/indexqueryhandler.h"
 #include "albert/item.h"
 #include "albert/matcher.h"
+#include "albert/query.h"
 #include "test.h"
 #include <QTest>
+using namespace albert::util;
 using namespace albert;
 using namespace std;
 QTEST_APPLESS_MAIN(PythonTests)
@@ -516,7 +517,7 @@ class IQH(albert.IndexQueryHandler):
 )");
 
     auto py = py::globals()["IQH"]();
-    auto &cpp = py.cast<albert::IndexQueryHandler&>();
+    auto &cpp = py.cast<IndexQueryHandler&>();
 
     cpp.setFuzzyMatching(false);  // builds the index
 

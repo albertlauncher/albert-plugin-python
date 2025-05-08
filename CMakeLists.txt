@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(python VERSION 6.8)
+project(python VERSION 6.9)
 
 find_package(Albert REQUIRED)
 
@@ -29,7 +29,6 @@ if (BUILD_TESTS)
     get_target_property(SRC_TST ${PROJECT_NAME} SOURCES)
     get_target_property(INC_TST ${PROJECT_NAME} INCLUDE_DIRECTORIES)
     get_target_property(LIBS_TST ${PROJECT_NAME} LINK_LIBRARIES)
-    get_target_property(CXX_STD_TST ${PROJECT_NAME} CXX_STANDARD)
 
     set(TARGET_TST ${PROJECT_NAME}_test)
     add_executable(${TARGET_TST} ${SRC_TST} test/test.cpp)
@@ -37,7 +36,6 @@ if (BUILD_TESTS)
     target_link_libraries(${TARGET_TST} PRIVATE ${LIBS_TST} Qt6::Test libalbert)
     set_target_properties(${TARGET_TST}
         PROPERTIES
-            CXX_STANDARD ${CXX_STD_TST}
             AUTOMOC ON
             AUTOUIC ON
             AUTORCC ON
