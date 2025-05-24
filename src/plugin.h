@@ -38,7 +38,7 @@ private:
 
     std::vector<std::unique_ptr<PyPluginLoader>> scanPlugins() const;
 
-    albert::StrongDependency<applications::Plugin> apps{"applications"};
+    albert::StrongDependency<applications::Plugin> apps{QStringLiteral("applications")};
     std::vector<std::unique_ptr<PyPluginLoader>> plugins_;
     std::unique_ptr<pybind11::gil_scoped_release> release_;
 

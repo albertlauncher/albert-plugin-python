@@ -17,11 +17,13 @@
 #include <QSettings>
 #include <QTextEdit>
 #include <QUrl>
-#include <albert/widgetsutil.h>
 #include <albert/extensionregistry.h>
 #include <albert/logging.h>
+#include <albert/messagebox.h>
 #include <chrono>
 ALBERT_LOGGING_CATEGORY("python")
+using namespace Qt::StringLiterals;
+using namespace albert::util;
 using namespace albert;
 using namespace chrono;
 using namespace std;
@@ -84,12 +86,12 @@ Plugin::Plugin()
 {
     ::apps = apps.get();
 
-    DEBG << "Python version:" << QString("%1.%2.%3")
+    DEBG << "Python version:" << u"%1.%2.%3"_s
                                      .arg(PY_MAJOR_VERSION)
                                      .arg(PY_MINOR_VERSION)
                                      .arg(PY_MICRO_VERSION);
 
-    DEBG << "Pybind11 version:" << QString("%1.%2.%3")
+    DEBG << "Pybind11 version:" << u"%1.%2.%3"_s
                                        .arg(PYBIND11_VERSION_MAJOR)
                                        .arg(PYBIND11_VERSION_MINOR)
                                        .arg(PYBIND11_VERSION_PATCH);
@@ -121,9 +123,10 @@ Plugin::~Plugin()
 
 void Plugin::updateStubFile() const
 {
-    QFile stub_rc(QString(":%1").arg(STUB_FILE));
+    QFile stub_rc(u':' % QString::fromLatin1(STUB_FILE));
     QFile stub_fs(stubFilePath());
-    auto interface_version = QString("%1.%2")
+
+    auto interface_version = u"%1.%2"_s
                                  .arg(PyPluginLoader::MAJOR_INTERFACE_VERSION)
                                  .arg(PyPluginLoader::MINOR_INTERFACE_VERSION);
 
@@ -167,11 +170,14 @@ void Plugin::initVirtualEnvironment() const
 
     // Create the venv
     QProcess p;
-    p.start(system_python.c_str(), {"-m",
-                                    "venv",
-                                    //"--upgrade",
-                                    //"--upgrade-deps",
-                                    venvPath().c_str()});
+    p.start(QString::fromLocal8Bit(system_python.native()),
+            {
+             u"-m"_s,
+             u"venv"_s,
+             //"--upgrade",
+             //"--upgrade-deps",
+             QString::fromLocal8Bit(venvPath().native())
+            });
     DEBG << "Initializing venv using system interpreter:"
          << (QStringList() << p.program() << p.arguments()).join(QChar::Space);
     p.waitForFinished(-1);
@@ -212,7 +218,7 @@ vector<unique_ptr<PyPluginLoader>> Plugin::scanPlugins() const
                     plugins.emplace_back(::move(loader));
                 }
                 catch (const NoPluginException &e) {
-                    DEBG << QString("Invalid plugin (%1): %2").arg(e.what(), file_info.filePath());
+                    DEBG << u"Invalid plugin (%1): %2"_s.arg(e.what(), file_info.filePath());
                 }
                 catch (const exception &e) {
                     WARN << e.what() << file_info.filePath();
@@ -221,7 +227,7 @@ vector<unique_ptr<PyPluginLoader>> Plugin::scanPlugins() const
         }
     }
 
-    INFO << QStringLiteral("[%1 ms] Python plugin scan")
+    INFO << u"[%1 ms] Python plugin scan"_s
                 .arg(duration_cast<milliseconds>(system_clock::now()-start).count());
 
     return plugins;
@@ -241,17 +247,17 @@ QWidget *Plugin::buildConfigWidget()
     Ui::ConfigWidget ui;
     ui.setupUi(w);
 
-    ui.label_api_version->setText(QString("<a href=\"file://%1\">v%2.%3</a>")
+    ui.label_api_version->setText(u"<a href=\"file://%1\">v%2.%3</a>"_s
                                   .arg(stubFilePath().c_str())
                                   .arg(PyPluginLoader::MAJOR_INTERFACE_VERSION)
                                   .arg(PyPluginLoader::MINOR_INTERFACE_VERSION));
 
-    ui.label_python_version->setText(QString("%1.%2.%3")
+    ui.label_python_version->setText(u"%1.%2.%3"_s
                                      .arg(PY_MAJOR_VERSION)
                                      .arg(PY_MINOR_VERSION)
                                      .arg(PY_MICRO_VERSION));
 
-    ui.label_pybind_version->setText(QString("%1.%2.%3")
+    ui.label_pybind_version->setText(u"%1.%2.%3"_s
                                      .arg(PYBIND11_VERSION_MAJOR)
                                      .arg(PYBIND11_VERSION_MINOR)
                                      .arg(PYBIND11_VERSION_PATCH));
@@ -266,7 +272,7 @@ QWidget *Plugin::buildConfigWidget()
                      QMessageBox::Ok)
             == QMessageBox::Ok)
         {
-            QFile::moveToTrash(venvPath().c_str());
+            QFile::moveToTrash(venvPath());
             restart();
         }
     });
@@ -281,11 +287,11 @@ bool Plugin::installPackages(const QStringList &packages) const
 {
     // Install dependencies
     QProcess p;
-    p.setProgram((venvPath() / BIN / PIP).c_str());
-    p.setArguments(QStringList{"install", "--disable-pip-version-check"} << packages);
+    p.setProgram(QString::fromLocal8Bit((venvPath() / BIN / PIP).native()));
+    p.setArguments(QStringList{u"install"_s, u"--disable-pip-version-check"_s} << packages);
 
-    DEBG << QString("Installing %1. [%2]")
-                .arg(packages.join(", "), (QStringList(p.program()) << p.arguments()).join(" "));
+    DEBG << QString(u"Installing %1. [%2]"_s)
+                .arg(packages.join(u", "_s), (QStringList(p.program()) << p.arguments()).join(u" "_s));
 
     p.start();
 
@@ -301,7 +307,7 @@ bool Plugin::installPackages(const QStringList &packages) const
         auto s = QString::fromUtf8(p.readAllStandardOutput());
         te->setTextColor(Qt::gray);
         te->append(s);
-        for (const auto &l : s.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts))
+        for (const auto &l : s.split(QRegularExpression(u"[\r\n]"_s), Qt::SkipEmptyParts))
              DEBG << l;
     });
 
@@ -312,7 +318,7 @@ bool Plugin::installPackages(const QStringList &packages) const
         auto s = QString::fromUtf8(p.readAllStandardError());
         te->setTextColor(Qt::red);
         te->append(s);
-        for (const auto &l : s.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts))
+        for (const auto &l : s.split(QRegularExpression(u"[\r\n]"_s), Qt::SkipEmptyParts))
              WARN << l;
     });
 

@@ -21,9 +21,10 @@
 #include <albert/plugininstance.h>
 #include <albert/pluginloader.h>
 #include <albert/pluginmetadata.h>
+using namespace Qt::StringLiterals;
+using namespace albert::util;
 using namespace albert;
 using namespace std;
-using namespace util;
 
 
 #define CATCH_PYBIND11_OVERRIDE_PURE(ret, base, func, ...) \
@@ -103,16 +104,16 @@ public:
         if (var.isNull())
             return py::none();
 
-        if (type.attr("__name__").cast<QString>() == QStringLiteral("str"))
+        if (type.attr("__name__").cast<QString>() == u"str"_s)
             return py::cast(var.toString());
 
-        else if (type.attr("__name__").cast<QString>() == QStringLiteral("bool"))
+        else if (type.attr("__name__").cast<QString>() == u"bool"_s)
             return py::cast(var.toBool());
 
-        else if (type.attr("__name__").cast<QString>() == QStringLiteral("int"))
+        else if (type.attr("__name__").cast<QString>() == u"int"_s)
             return py::cast(var.toInt());
 
-        else if (type.attr("__name__").cast<QString>() == QStringLiteral("float"))
+        else if (type.attr("__name__").cast<QString>() == u"float"_s)
             return py::cast(var.toDouble());
 
         else
@@ -144,7 +145,8 @@ public:
                 {
                     auto row_spec = py::cast<py::dict>(item);
 
-                    if (auto type = row_spec[key_type].cast<QString>(); type == QStringLiteral("lineedit"))
+                    if (auto type = row_spec[key_type].cast<QString>();
+                        type == u"lineedit"_s)
                     {
                         auto *fw = new QLineEdit(w);
                         auto property_name = row_spec[key_property].cast<QString>();
@@ -161,7 +163,7 @@ public:
 
                         l->addRow(row_spec[key_label].cast<QString>(), fw);
                     }
-                    else if (type == QStringLiteral("checkbox"))
+                    else if (type == u"checkbox"_s)
                     {
                         auto *fw = new QCheckBox(w);
                         auto property_name = row_spec[key_property].cast<QString>();
@@ -178,7 +180,7 @@ public:
 
                         l->addRow(row_spec[key_label].cast<QString>(), fw);
                     }
-                    else if (type == QStringLiteral("combobox"))
+                    else if (type == u"combobox"_s)
                     {
                         auto *fw = new QComboBox(w);
                         auto property_name = row_spec[key_property].cast<QString>();
@@ -198,7 +200,7 @@ public:
 
                         l->addRow(row_spec[key_label].cast<QString>(), fw);
                     }
-                    else if (type == QStringLiteral("spinbox"))
+                    else if (type == u"spinbox"_s)
                     {
                         auto *fw = new QSpinBox(w);
                         auto property_name = row_spec[key_property].cast<QString>();
@@ -215,7 +217,7 @@ public:
 
                         l->addRow(row_spec[key_label].cast<QString>(), fw);
                     }
-                    else if (type == QStringLiteral("doublespinbox"))
+                    else if (type == u"doublespinbox"_s)
                     {
                         auto *fw = new QDoubleSpinBox(w);
                         auto property_name = row_spec[key_property].cast<QString>();
@@ -232,7 +234,7 @@ public:
 
                         l->addRow(row_spec[key_label].cast<QString>(), fw);
                     }
-                    else if (type == QStringLiteral("label"))
+                    else if (type == u"label"_s)
                     {
                         auto *lbl = new QLabel(w);
                         lbl->setText(row_spec[key_text].cast<QString>());
@@ -242,7 +244,7 @@ public:
                         l->addRow(lbl);
                     }
                     else
-                        throw runtime_error(QString("Invalid config widget form layout row widget type: %1").arg(type).toStdString());
+                        throw runtime_error(format("Invalid config widget type: {}", type.toStdString()));
                 }
                 return w;
             }

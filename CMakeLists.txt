@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(python VERSION 6.9)
+project(python VERSION 6.10)
 
 find_package(Albert REQUIRED)
 
