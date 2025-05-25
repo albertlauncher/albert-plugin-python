@@ -157,7 +157,7 @@ PyPluginLoader::PyPluginLoader(const Plugin &plugin, const QString &module_path)
         throw NoPluginException("No interface id found");
 
     // Namespace id
-    metadata_.id = u"python."_s % metadata_.id;
+    metadata_.id = u"python."_s + metadata_.id;
 
     QStringList errors;
     static const QRegularExpression regex_version(uR"R(^(\d+)\.(\d+)$)R"_s);
@@ -180,7 +180,7 @@ PyPluginLoader::PyPluginLoader(const Plugin &plugin, const QString &module_path)
 #elif defined(Q_OS_WIN)
         if (!metadata_.platforms.contains(u"Windows"_s))
 #endif
-        errors << u"Platform not supported. Supported: "_s % metadata_.platforms.join(u", "_s);
+        errors << u"Platform not supported. Supported: "_s + metadata_.platforms.join(u", "_s);
 
     //
     // Logging category

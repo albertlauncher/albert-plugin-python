@@ -31,7 +31,6 @@ public:
     QString trigger() const override { return "t"; }
     QString string() const override { return "x"; }
     bool isActive() const override { return false; }
-    bool isFinished() const override { return false; }
     const bool &isValid() const override { return valid_; }
     bool isTriggered() const override { return true; }
     const vector<ResultItem> &matches() override { return matches_; }

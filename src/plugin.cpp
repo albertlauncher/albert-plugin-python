@@ -123,7 +123,7 @@ Plugin::~Plugin()
 
 void Plugin::updateStubFile() const
 {
-    QFile stub_rc(u':' % QString::fromLatin1(STUB_FILE));
+    QFile stub_rc(u":"_s + QString::fromLatin1(STUB_FILE));
     QFile stub_fs(stubFilePath());
 
     auto interface_version = u"%1.%2"_s
@@ -152,8 +152,8 @@ void Plugin::initPythonInterpreter() const
     config.site_import = 0;
     dumpPyConfig(config);
     if (auto status = Py_InitializeFromConfig(&config); PyStatus_Exception(status))
-        throw runtime_error(Plugin::tr("Failed initializing the interpreter: %1 %2")
-                            .arg(status.func, status.err_msg).toStdString());
+        throw runtime_error(format("Failed initializing the interpreter: {} {}",
+                                   status.func, status.err_msg));
     PyConfig_Clear(&config);
     dumpPyConfig(config);
 }
@@ -218,7 +218,7 @@ vector<unique_ptr<PyPluginLoader>> Plugin::scanPlugins() const
                     plugins.emplace_back(::move(loader));
                 }
                 catch (const NoPluginException &e) {
-                    DEBG << u"Invalid plugin (%1): %2"_s.arg(e.what(), file_info.filePath());
+                    DEBG << "Invalid plugin" << file_info.filePath() << e.what();
                 }
                 catch (const exception &e) {
                     WARN << e.what() << file_info.filePath();
@@ -248,19 +248,19 @@ QWidget *Plugin::buildConfigWidget()
     ui.setupUi(w);
 
     ui.label_api_version->setText(u"<a href=\"file://%1\">v%2.%3</a>"_s
-                                  .arg(stubFilePath().c_str())
-                                  .arg(PyPluginLoader::MAJOR_INTERFACE_VERSION)
-                                  .arg(PyPluginLoader::MINOR_INTERFACE_VERSION));
+                                      .arg(QString::fromStdString(stubFilePath().native()))
+                                      .arg(PyPluginLoader::MAJOR_INTERFACE_VERSION)
+                                      .arg(PyPluginLoader::MINOR_INTERFACE_VERSION));
 
     ui.label_python_version->setText(u"%1.%2.%3"_s
-                                     .arg(PY_MAJOR_VERSION)
-                                     .arg(PY_MINOR_VERSION)
-                                     .arg(PY_MICRO_VERSION));
+                                         .arg(PY_MAJOR_VERSION)
+                                         .arg(PY_MINOR_VERSION)
+                                         .arg(PY_MICRO_VERSION));
 
     ui.label_pybind_version->setText(u"%1.%2.%3"_s
-                                     .arg(PYBIND11_VERSION_MAJOR)
-                                     .arg(PYBIND11_VERSION_MINOR)
-                                     .arg(PYBIND11_VERSION_PATCH));
+                                         .arg(PYBIND11_VERSION_MAJOR)
+                                         .arg(PYBIND11_VERSION_MINOR)
+                                         .arg(PYBIND11_VERSION_PATCH));
 
     connect(ui.pushButton_venv_open, &QPushButton::clicked,
             this, [this]{ open(venvPath()); });
