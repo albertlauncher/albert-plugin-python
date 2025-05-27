@@ -7,7 +7,6 @@
 #include "trampolineclasses.hpp" // Has to be imported first
 
 #include <QDir>
-#include <albert/albert.h>
 #include <albert/indexqueryhandler.h>
 #include <albert/logging.h>
 #include <albert/matcher.h>
@@ -15,6 +14,7 @@
 #include <albert/plugin/applications.h>
 #include <albert/plugininstance.h>
 #include <albert/standarditem.h>
+#include <albert/systemutil.h>
 using namespace albert;
 using namespace std;
 using namespace util;
@@ -249,7 +249,8 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
     m.def("openFile", static_cast<void(*)(const QString &)>(&open), py::arg("path"));
     m.def("openUrl", &openUrl, py::arg("url"));
 
-    m.def("runDetachedProcess", &runDetachedProcess,
+    m.def("runDetachedProcess",
+          static_cast<long long(*)(const QStringList &commandline, const QString &working_dir)>(&runDetachedProcess),
           py::arg("cmdln"),
           py::arg("workdir") = QString());
 

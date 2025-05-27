@@ -20,6 +20,7 @@
 #include <albert/extensionregistry.h>
 #include <albert/logging.h>
 #include <albert/messagebox.h>
+#include <albert/systemutil.h>
 #include <chrono>
 ALBERT_LOGGING_CATEGORY("python")
 using namespace Qt::StringLiterals;
@@ -27,7 +28,6 @@ using namespace albert::util;
 using namespace albert;
 using namespace chrono;
 using namespace std;
-using namespace util;
 using std::filesystem::path;
 namespace py = pybind11;
 #define XSTR(s) STR(s)
