@@ -80,9 +80,9 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
             unique_ptr<PluginInstance, TrampolineDeleter<PluginInstance, PyPI>>
             >(m, "PluginInstance")
         .def(py::init<>())
-        .def("id", [](PyPI *self){ return self->loader().metaData().id; })
-        .def("name", [](PyPI *self){ return self->loader().metaData().name; })
-        .def("description", [](PyPI *self){ return self->loader().metaData().description; })
+        .def("id", [](PyPI *self){ return self->loader().metadata().id; })
+        .def("name", [](PyPI *self){ return self->loader().metadata().name; })
+        .def("description", [](PyPI *self){ return self->loader().metadata().description; })
         .def("cacheLocation", &PluginInstance::cacheLocation)
         .def("configLocation", &PluginInstance::configLocation)
         .def("dataLocation", &PluginInstance::dataLocation)
@@ -113,19 +113,30 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         ;
 
     py::class_<StandardItem, Item, shared_ptr<StandardItem>>(m, "StandardItem")
-        .def(py::init(py::overload_cast<QString,QString,QString,QString,QStringList,vector<Action>>(&StandardItem::make)),
-             py::arg("id") = QString(),
-             py::arg("text") = QString(),
-             py::arg("subtext") = QString(),
-             py::arg("inputActionText") = QString(),
-             py::arg("iconUrls") = QStringList(),
-             py::arg("actions") = vector<Action>())
+        // For now do not propagate internal api changes to the python api // TODO v4.0
+        // .def(py::init(py::overload_cast<QString,QString,QString,QString,QStringList,vector<Action>>(&StandardItem::make)),
+        .def(py::init([](QString id, QString text, QString subtext, QString input_action_text, QStringList icon_urls, vector<Action>actions)
+            {
+                 py::gil_scoped_acquire acquire;
+                 return StandardItem::make(::move(id),
+                                           ::move(text),
+                                           ::move(subtext),
+                                           ::move(icon_urls),
+                                           ::move(actions),
+                                           ::move(input_action_text));
+            }),
+            py::arg("id") = QString(),
+            py::arg("text") = QString(),
+            py::arg("subtext") = QString(),
+            py::arg("inputActionText") = QString(),
+            py::arg("iconUrls") = QStringList(),
+            py::arg("actions") = vector<Action>())
         .def_property("id", &StandardItem::id, &StandardItem::setId)
         .def_property("text", &StandardItem::text, &StandardItem::setText)
         .def_property("subtext", &StandardItem::subtext, &StandardItem::setSubtext)
-        .def_property("inputActionText", &StandardItem::inputActionText, &StandardItem::setInputActionText)
         .def_property("iconUrls", &StandardItem::iconUrls, &StandardItem::setIconUrls)
         .def_property("actions", &StandardItem::actions, &StandardItem::setActions)
+        .def_property("inputActionText", &StandardItem::inputActionText, &StandardItem::setInputActionText)
         ;
 
     py::class_<Query, unique_ptr<Query, py::nodelete>>(m, "Query")

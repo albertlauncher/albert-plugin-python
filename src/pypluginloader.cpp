@@ -13,10 +13,13 @@
 #include <QStandardPaths>
 #include <QtConcurrentRun>
 #include <albert/messagebox.h>
+#include <albert/plugininstance.h>
+#include <chrono>
 namespace py = pybind11;
 using namespace Qt::StringLiterals;
 using namespace albert::util;
 using namespace albert;
+using namespace std::chrono;
 using namespace std;
 
 static const auto ATTR_PLUGIN_CLASS   = "Plugin";
@@ -197,71 +200,63 @@ PyPluginLoader::PyPluginLoader(const Plugin &plugin, const QString &module_path)
 
 PyPluginLoader::~PyPluginLoader() = default;
 
+QString PyPluginLoader::path() const noexcept { return module_path_; }
 
-QString PyPluginLoader::path() const { return module_path_; }
+const albert::PluginMetadata &PyPluginLoader::metadata() const noexcept{ return metadata_; }
 
-const albert::PluginMetaData &PyPluginLoader::metaData() const { return metadata_; }
-
-void PyPluginLoader::load()
+void PyPluginLoader::load() noexcept
 {
-    if (instance_)
+    auto future = QtConcurrent::run([this]
     {
-        WARN << metadata_.id << "Plugin already loaded.";
-        return;
-    }
+        // Check binary dependencies
+        for (const auto& exec : as_const(metadata_.binary_dependencies))
+            if (QStandardPaths::findExecutable(exec).isNull())
+                throw runtime_error(Plugin::tr("No '%1' in $PATH.").arg(exec).toStdString());
 
-    // Check binary dependencies
-    for (const auto& exec : metadata_.binary_dependencies)
-        if (QStandardPaths::findExecutable(exec).isNull())
-            throw runtime_error(Plugin::tr("No '%1' in $PATH.").arg(exec).toStdString());
-
-    try {
-        QFutureWatcher<void> watcher;
-        watcher.setFuture(QtConcurrent::run([this]() {
-            load_();
-        }));
-
-        QEventLoop loop;
-        QObject::connect(&watcher, &decltype(watcher)::finished, &loop, &QEventLoop::quit);
-        loop.exec();
-
-        try{
-            watcher.waitForFinished();
-        } catch (const QUnhandledException &e) {
-            if (e.exception())
-                std::rethrow_exception(e.exception());
-            else
-                throw;
-        }
-
-    }
-    catch (py::error_already_set &e)
-    {
-        // Catch only import errors, rethrow anything else
-        if (!e.matches(PyExc_ModuleNotFoundError))
-            throw;
-
-        // ask user if dependencies should be installed
-        auto button = question(Plugin::tr("Some modules in the plugin '%1' were not found.\n\n"
-                                          "Install dependencies into the virtual environment?")
-                                   .arg(metadata_.name));
-        if (button == QMessageBox::Yes)
-        {
-            if (plugin_.installPackages(metadata_.runtime_dependencies))
-                return load_();  // On success try to load again
-            else
-                throw;
-        }
+        auto tp = system_clock::now();
+        load_();
+        return duration_cast<milliseconds>(system_clock::now() - tp).count();
+    })
+    .then(this, [this](long long dur_l){
+        emit finished(tr("Loading: %1 ms").arg(dur_l));
+    })
+    .onFailed(this, [this](const QUnhandledException &que) {
+        QString error;
+        if (que.exception())
+            try {
+                std::rethrow_exception(que.exception());
+            } catch (const py::error_already_set &e) {
+                if (!e.matches(PyExc_ModuleNotFoundError))  // Catch import errors
+                    setState(Unloaded, QString::fromStdString(e.what()));
+                else if (plugin_.installPackages(metadata_.runtime_dependencies))
+                    return load();  // On success try to load again
+                else
+                    setState(Unloaded, tr("Failed installing dependencies."));
+            } catch (const std::exception &e) {
+                error = QString::fromStdString(e.what());
+            }
         else
-            throw;
-    }
+            error = u"QUnhandledException but exception() returns nullptr"_s;
+        WARN << error;
+        emit finished(error);
+    })
+    .onFailed(this, [this](const std::exception &e) {
+        const auto error = QString::fromStdString(e.what());
+        WARN << error;
+        emit finished(error);
+    })
+    .onFailed(this, [this]{
+        const auto error = u"Unknown exception in QtPluginLoader::load()"_s;
+        WARN << error;
+        emit finished(error);
+    });
 }
 
 void PyPluginLoader::load_()
 {
-    py::gil_scoped_acquire acquire;
-
     try {
+        py::gil_scoped_acquire acquire;
+
         // Import as __name__ = albert.package_name
         const auto importlib_util = py::module::import("importlib.util");
         const auto spec_from_file_location = importlib_util.attr("spec_from_file_location");
@@ -293,40 +288,30 @@ void PyPluginLoader::load_()
 
         // Execute module
         pyspec.attr("loader").attr("exec_module")(module_);
+
+        current_loader = this;
+        if (py_instance_ = module_.attr(ATTR_PLUGIN_CLASS)();  // may throw
+            !py::isinstance<PyPI>(py_instance_))
+            throw runtime_error("Python Plugin class is not of type PluginInstance.");
+
+        instance_ = py_instance_.cast<PluginInstance*>(); // should never fail
     }
     catch (...) {
-        module_ = py::object();
+        unload();
         throw;
     }
 }
 
-void PyPluginLoader::unload()
+void PyPluginLoader::unload() noexcept
 {
     py::gil_scoped_acquire acquire;
 
-    instance_ = py::object();
+    instance_= nullptr;
+    py_instance_ = py::object();
     module_ = py::object();
 
     // Run garbage collection to make sure that __del__ will be called.
     py::module::import("gc").attr("collect")();
 }
 
-PluginInstance *PyPluginLoader::createInstance()
-{
-    if (!instance_)
-    {
-        py::gil_scoped_acquire acquire;
-        try {
-            instance_ = module_.attr(ATTR_PLUGIN_CLASS)();  // may throw
-
-            if (!py::isinstance<PyPI>(instance_))
-                throw runtime_error("Python Plugin class is not of type PluginInstance.");
-
-        } catch (const std::exception &e) {
-            instance_ = py::object();
-            module_ = py::object();
-            throw;
-        }
-    }
-    return instance_.cast<PluginInstance*>();
-}
+PluginInstance *PyPluginLoader::instance() noexcept { return instance_; }

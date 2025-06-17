@@ -42,7 +42,7 @@ QString name() const override { \
     try { \
         py::gil_scoped_acquire gil; \
         if (auto py_instance = py::cast(this); py::isinstance<PluginInstance>(py_instance)) \
-            return py::cast<PluginInstance*>(py_instance)->loader().metaData().name; \
+            return py::cast<PluginInstance*>(py_instance)->loader().metadata().name; \
         PYBIND11_OVERRIDE_PURE(QString, Base, name, ); \
     } \
     catch (const std::runtime_error &e) { \

@@ -35,17 +35,7 @@
 <context>
     <name>Plugin</name>
     <message>
-        <source>Failed initializing the interpreter: %1 %2</source>
-        <translation></translation>
-    </message>
-    <message>
         <source>Failed initializing virtual environment. Exit code: %1.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Some modules in the plugin &apos;%1&apos; were not found.
-
-Install dependencies into the virtual environment?</source>
         <translation></translation>
     </message>
     <message>
@@ -53,7 +43,18 @@ Install dependencies into the virtual environment?</source>
         <translation></translation>
     </message>
     <message>
-        <source>Resetting the virtual environment requires a restart.</source>
+        <source>Resetting the virtual environment requires a restart. Restart now?</source>
+        <translation></translation>
+    </message>
+</context>
+<context>
+    <name>PyPluginLoader</name>
+    <message>
+        <source>Loading: %1 ms</source>
+        <translation></translation>
+    </message>
+    <message>
+        <source>Failed installing dependencies.</source>
         <translation></translation>
     </message>
 </context>

@@ -10,7 +10,6 @@
 #include <QDir>
 #include <QFile>
 #include <QFontDatabase>
-#include <QMessageBox>
 #include <QPointer>
 #include <QProcess>
 #include <QRegularExpression>
@@ -267,10 +266,7 @@ QWidget *Plugin::buildConfigWidget()
 
     connect(ui.pushButton_venv_reset, &QPushButton::clicked, this, [this]
     {
-        if (question(tr("Resetting the virtual environment requires a restart."),
-                     QMessageBox::Cancel | QMessageBox::Ok,
-                     QMessageBox::Ok)
-            == QMessageBox::Ok)
+        if (question(tr("Resetting the virtual environment requires a restart. Restart now?")))
         {
             QFile::moveToTrash(venvPath());
             restart();

@@ -32,11 +32,11 @@ public:
     PyPluginLoader(const Plugin &plugin, const QString &module_path);
     ~PyPluginLoader();
 
-    QString path() const override;
-    const albert::PluginMetaData &metaData() const override;
-    void load() override;
-    void unload() override;
-    albert::PluginInstance *createInstance() override;
+    QString path() const noexcept override;
+    const albert::PluginMetadata &metadata() const noexcept override;
+    void load() noexcept override;
+    void unload() noexcept override;
+    albert::PluginInstance *instance() noexcept override;
 
 private:
 
@@ -47,11 +47,12 @@ private:
     const QString module_path_;
     QString source_path_;
 
-    albert::PluginMetaData metadata_;
+    albert::PluginMetadata metadata_;
     std::string logging_category_name;
     std::unique_ptr<QLoggingCategory> logging_category;
 
     pybind11::module module_;
-    pybind11::object instance_;
+    pybind11::object py_instance_;
+    albert::PluginInstance *instance_;
 
 };
