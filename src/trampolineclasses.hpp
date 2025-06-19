@@ -58,21 +58,13 @@ public:
     vector<Extension *> extensions() override
     {
         py::gil_scoped_acquire gil;
-        try
-        {
-            PYBIND11_OVERRIDE_PURE(vector<Extension *>, PluginInstance, extensions, );
-        }
-        catch (const std::exception &e)
-        {
-            if (auto py_instance = py::cast(this); py::isinstance<Extension>(py_instance))
-                return {py::cast<Extension *>(py_instance)};
-
-            pybind11::pybind11_fail(
-                "Tried to call pure virtual function \""
-                PYBIND11_STRINGIFY(Base) "::" "id" "\"");
-        }
-
-        return {};
+        py::function override = py::get_override(this, "extensions");
+        if (override)
+            return override().cast<std::vector<Extension *>>();  // may throw, is okay
+        else if (auto py_instance = py::cast(this); py::isinstance<Extension>(py_instance))
+            return {py_instance.cast<Extension *>()};
+        else
+            return {};
     }
 
     void writeConfig(QString key, const py::object &value) const
