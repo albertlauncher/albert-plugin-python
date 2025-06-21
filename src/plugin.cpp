@@ -264,6 +264,11 @@ QWidget *Plugin::buildConfigWidget()
     connect(ui.pushButton_venv_open, &QPushButton::clicked,
             this, [this]{ open(venvPath()); });
 
+    connect(ui.pushButton_venv_term, &QPushButton::clicked, this, [this]{
+        apps->runTerminal(u"cd '%1' && . bin/activate; exec $SHELL"_s
+                              .arg(QString::fromUtf8(venvPath().c_str())));
+    });
+
     connect(ui.pushButton_venv_reset, &QPushButton::clicked, this, [this]
     {
         if (question(tr("Resetting the virtual environment requires a restart. Restart now?")))
