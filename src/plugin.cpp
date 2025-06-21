@@ -20,6 +20,9 @@
 #include <albert/logging.h>
 #include <albert/messagebox.h>
 #include <albert/systemutil.h>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <chrono>
 ALBERT_LOGGING_CATEGORY("python")
 using namespace Qt::StringLiterals;
@@ -187,6 +190,12 @@ void Plugin::initVirtualEnvironment() const
     if (p.exitCode() != 0)
         throw runtime_error(tr("Failed initializing virtual environment. Exit code: %1.")
                                 .arg(p.exitCode()).toStdString());
+
+    DEBG << "Upgrade pip";
+    p.setProgram(QString::fromLocal8Bit((venvPath() / BIN / PIP).native()));
+    p.setArguments({u"install"_s, u"--upgrade"_s, u"pip"_s, });
+    p.start();
+    p.waitForFinished();
 }
 
 path Plugin::venvPath() const { return dataLocation() / VENV; }
@@ -284,9 +293,37 @@ QWidget *Plugin::buildConfigWidget()
     return w;
 }
 
-bool Plugin::installPackages(const QStringList &packages) const
+bool Plugin::checkPackages(const QStringList &packages) const
 {
-    // Install dependencies
+    scoped_lock lock(pip_mutex_);
+
+    QProcess p;
+    p.setProgram(QString::fromLocal8Bit((venvPath() / BIN / PIP).native()));
+    p.setArguments({u"inspect"_s});
+    p.start();
+    p.waitForFinished();
+
+    if (p.exitStatus() == QProcess::ExitStatus::NormalExit && p.exitCode() == EXIT_SUCCESS)
+    {
+        const auto output = p.readAllStandardOutput();
+        const auto installed = QJsonDocument::fromJson(output).object()["installed"_L1].toArray();
+        auto v = installed
+                 | views::transform([](const QJsonValue &v){ return v["metadata"_L1]["name"_L1].toString().toLower(); });
+        set<QString> pkgs(v.begin(), v.end());
+        return ranges::all_of(packages,
+                              [&pkgs](const QString &p) { return pkgs.contains(p.toLower()); });
+    }
+    else
+    {
+        WARN << "Failed inspecting packages with exit code" << p.exitCode();
+        return false;
+    }
+}
+
+QString Plugin::installPackages(const QStringList &packages) const
+{
+    scoped_lock lock(pip_mutex_);
+
     QProcess p;
     p.setProgram(QString::fromLocal8Bit((venvPath() / BIN / PIP).native()));
     p.setArguments(QStringList{u"install"_s, u"--disable-pip-version-check"_s} << packages);
@@ -295,44 +332,12 @@ bool Plugin::installPackages(const QStringList &packages) const
                 .arg(packages.join(u", "_s), (QStringList(p.program()) << p.arguments()).join(u" "_s));
 
     p.start();
+    p.waitForFinished();
 
-    QPointer<QTextEdit> te(new QTextEdit);
-    te->setCurrentFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-    te->setReadOnly(true);
-    te->resize(600, 480);
-    te->setAttribute(Qt::WA_DeleteOnClose);
-    te->show();
+    auto success = p.exitStatus() == QProcess::ExitStatus::NormalExit && p.exitCode() == EXIT_SUCCESS;
 
-    QObject::connect(&p, &QProcess::readyReadStandardOutput, te, [te, &p]
-    {
-        auto s = QString::fromUtf8(p.readAllStandardOutput());
-        te->setTextColor(Qt::gray);
-        te->append(s);
-        for (const auto &l : s.split(QRegularExpression(u"[\r\n]"_s), Qt::SkipEmptyParts))
-             DEBG << l;
-    });
+    if (!success)
+        return QString::fromUtf8(p.readAllStandardError());
 
-    bool have_std_err = false;
-    QObject::connect(&p, &QProcess::readyReadStandardError, te, [&]
-    {
-        have_std_err = true;
-        auto s = QString::fromUtf8(p.readAllStandardError());
-        te->setTextColor(Qt::red);
-        te->append(s);
-        for (const auto &l : s.split(QRegularExpression(u"[\r\n]"_s), Qt::SkipEmptyParts))
-             WARN << l;
-    });
-
-    QEventLoop loop;
-    QObject::connect(&p, &QProcess::finished, &loop, &QEventLoop::quit);
-    loop.exec();
-    loop.processEvents();
-
-    auto success = p.exitStatus() == QProcess::ExitStatus::NormalExit
-                    && p.exitCode() == EXIT_SUCCESS;
-
-    if (!have_std_err && success && te)
-        te->close();  // auto-close on success only
-
-    return success;
+    return {};
 }

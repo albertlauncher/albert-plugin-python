@@ -23,9 +23,12 @@ public:
     QWidget* buildConfigWidget() override;
     std::vector<albert::PluginLoader*> plugins() override;
 
-    bool installPackages(const QStringList &packages) const;
+    bool checkPackages(const QStringList &packages) const;
+    QString installPackages(const QStringList &packages) const;
 
 private:
+
+    mutable std::mutex pip_mutex_;
 
     void updateStubFile() const;
     void initPythonInterpreter() const;

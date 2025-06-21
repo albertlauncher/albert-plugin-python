@@ -31,6 +31,10 @@
         <source>User plugin directory</source>
         <translation></translation>
     </message>
+    <message>
+        <source>Terminal</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Plugin</name>
@@ -46,15 +50,15 @@
         <source>Resetting the virtual environment requires a restart. Restart now?</source>
         <translation></translation>
     </message>
+    <message>
+        <source>Failed installing dependencies</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>PyPluginLoader</name>
     <message>
         <source>Loading: %1 ms</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Failed installing dependencies.</source>
         <translation></translation>
     </message>
 </context>

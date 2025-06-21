@@ -213,6 +213,14 @@ void PyPluginLoader::load() noexcept
             if (QStandardPaths::findExecutable(exec).isNull())
                 throw runtime_error(Plugin::tr("No '%1' in $PATH.").arg(exec).toStdString());
 
+        // Check runtime dependencies
+        if (!metadata_.runtime_dependencies.isEmpty()
+            && !plugin_.checkPackages(metadata_.runtime_dependencies))
+            if (auto err = plugin_.installPackages(metadata_.runtime_dependencies);
+                !err.isNull())
+                throw runtime_error(u"%1:\n\n%2"_s.arg(Plugin::tr("Failed installing dependencies"),
+                                                       err).toStdString());
+
         auto tp = system_clock::now();
         load_();
         return duration_cast<milliseconds>(system_clock::now() - tp).count();
@@ -225,13 +233,6 @@ void PyPluginLoader::load() noexcept
         if (que.exception())
             try {
                 std::rethrow_exception(que.exception());
-            } catch (const py::error_already_set &e) {
-                if (!e.matches(PyExc_ModuleNotFoundError))  // Catch import errors
-                    setState(Unloaded, QString::fromStdString(e.what()));
-                else if (plugin_.installPackages(metadata_.runtime_dependencies))
-                    return load();  // On success try to load again
-                else
-                    setState(Unloaded, tr("Failed installing dependencies."));
             } catch (const std::exception &e) {
                 error = QString::fromStdString(e.what());
             }

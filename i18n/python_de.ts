@@ -31,6 +31,10 @@
         <source>User plugin directory</source>
         <translation>Benutzerplugin-Verzeichnis</translation>
     </message>
+    <message>
+        <source>Terminal</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Plugin</name>
@@ -62,6 +66,10 @@ Abhängigkeiten in die virtuelle Umgebung installieren?</translation>
         <source>Resetting the virtual environment requires a restart. Restart now?</source>
         <translation>Das Zurücksetzen der virtuellen Umgebung erfordert einen Neustart. Jetzt neu starten?</translation>
     </message>
+    <message>
+        <source>Failed installing dependencies</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>PyPluginLoader</name>
@@ -71,7 +79,7 @@ Abhängigkeiten in die virtuelle Umgebung installieren?</translation>
     </message>
     <message>
         <source>Failed installing dependencies.</source>
-        <translation>Installieren der Abhängigkeiten fehlgeschlagen.</translation>
+        <translation type="vanished">Installieren der Abhängigkeiten fehlgeschlagen.</translation>
     </message>
 </context>
 </TS>
