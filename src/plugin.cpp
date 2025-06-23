@@ -178,7 +178,7 @@ void Plugin::initVirtualEnvironment() const
              u"venv"_s,
              //"--upgrade",
              //"--upgrade-deps",
-             QString::fromLocal8Bit(venvPath().native())
+             toQString(venvPath())
             });
     DEBG << "Initializing venv using system interpreter:"
          << (QStringList() << p.program() << p.arguments()).join(QChar::Space);
@@ -192,7 +192,7 @@ void Plugin::initVirtualEnvironment() const
                                 .arg(p.exitCode()).toStdString());
 
     DEBG << "Upgrade pip";
-    p.setProgram(QString::fromLocal8Bit((venvPath() / BIN / PIP).native()));
+    p.setProgram(toQString(venvPath() / BIN / PIP));
     p.setArguments({u"install"_s, u"--upgrade"_s, u"pip"_s, });
     p.start();
     p.waitForFinished();
@@ -216,9 +216,8 @@ vector<unique_ptr<PyPluginLoader>> Plugin::scanPlugins() const
         if (QDir dir{data_location/PLUGINS}; dir.exists())
         {
             DEBG << "Searching Python plugins in" << dir.absolutePath();
-            for (const QFileInfo &file_info : dir.entryInfoList(QDir::Files
-                                                                | QDir::Dirs
-                                                                | QDir::NoDotAndDotDot))
+            for (const auto r = dir.entryInfoList(QDir::Files|QDir::Dirs|QDir::NoDotAndDotDot);
+                 const QFileInfo &file_info : r)
             {
                 try {
                     auto loader = make_unique<PyPluginLoader>(*this, file_info.absoluteFilePath());
@@ -275,7 +274,7 @@ QWidget *Plugin::buildConfigWidget()
 
     connect(ui.pushButton_venv_term, &QPushButton::clicked, this, [this]{
         apps->runTerminal(u"cd '%1' && . bin/activate; exec $SHELL"_s
-                              .arg(QString::fromUtf8(venvPath().c_str())));
+                              .arg(toQString(venvPath())));
     });
 
     connect(ui.pushButton_venv_reset, &QPushButton::clicked, this, [this]
@@ -298,7 +297,7 @@ bool Plugin::checkPackages(const QStringList &packages) const
     scoped_lock lock(pip_mutex_);
 
     QProcess p;
-    p.setProgram(QString::fromLocal8Bit((venvPath() / BIN / PIP).native()));
+    p.setProgram(toQString(venvPath() / BIN / PIP));
     p.setArguments({u"inspect"_s});
     p.start();
     p.waitForFinished();
@@ -325,7 +324,7 @@ QString Plugin::installPackages(const QStringList &packages) const
     scoped_lock lock(pip_mutex_);
 
     QProcess p;
-    p.setProgram(QString::fromLocal8Bit((venvPath() / BIN / PIP).native()));
+    p.setProgram(toQString(venvPath() / BIN / PIP));
     p.setArguments(QStringList{u"install"_s, u"--disable-pip-version-check"_s} << packages);
 
     DEBG << QString(u"Installing %1. [%2]"_s)
