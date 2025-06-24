@@ -60,6 +60,7 @@ PyPluginLoader::PyPluginLoader(const Plugin &plugin, const QString &module_path)
     //
 
     metadata_.id = file_info.completeBaseName();
+    metadata_.load_type = PluginMetadata::LoadType::User;
 
     QString source;
 
