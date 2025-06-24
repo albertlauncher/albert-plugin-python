@@ -39,7 +39,8 @@ static const auto ATTR_MD_PLATFORMS   = "md_platforms";
 
 PyPluginLoader::PyPluginLoader(const Plugin &plugin, const QString &module_path) :
     plugin_(plugin),
-    module_path_(module_path)
+    module_path_(module_path),
+    instance_(nullptr)
 {
     const QFileInfo file_info(module_path);
     if(!file_info.exists())
