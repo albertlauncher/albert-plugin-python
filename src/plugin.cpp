@@ -306,11 +306,11 @@ bool Plugin::checkPackages(const QStringList &packages) const
     {
         const auto output = p.readAllStandardOutput();
         const auto installed = QJsonDocument::fromJson(output).object()["installed"_L1].toArray();
-        auto v = installed
-                 | views::transform([](const QJsonValue &v){ return v["metadata"_L1]["name"_L1].toString().toLower(); });
-        set<QString> pkgs(v.begin(), v.end());
+        auto view = installed
+                    | views::transform([](const auto &v){ return v["metadata"_L1]["name"_L1].toString().toLower(); });
+        set<QString> pkgs(view.begin(), view.end());
         return ranges::all_of(packages,
-                              [&pkgs](const QString &p) { return pkgs.contains(p.toLower()); });
+                              [&pkgs](const QString &pkg) { return pkgs.contains(pkg.toLower()); });
     }
     else
     {
