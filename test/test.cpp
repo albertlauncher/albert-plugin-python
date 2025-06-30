@@ -2,7 +2,6 @@
 
 #include "cast_specialization.hpp"
 
-#include "albert/action.h"
 #include "albert/fallbackhandler.h"
 #include "albert/indexqueryhandler.h"
 #include "albert/item.h"
