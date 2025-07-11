@@ -167,8 +167,7 @@ void Plugin::initVirtualEnvironment() const
 
     py::gil_scoped_acquire acquire;
 
-    auto system_python =
-        path(py::module::import("sys").attr("prefix").cast<string>()) / BIN / PYTHON;
+    auto system_python = py::module::import("sys").attr("prefix").cast<path>() / BIN / PYTHON;
 
     // Create the venv
     QProcess p;
@@ -180,22 +179,21 @@ void Plugin::initVirtualEnvironment() const
              //"--upgrade-deps",
              toQString(venvPath())
             });
+
     DEBG << "Initializing venv using system interpreter:"
          << (QStringList() << p.program() << p.arguments()).join(QChar::Space);
+
     p.waitForFinished(-1);
+
     if (auto out = p.readAllStandardOutput(); !out.isEmpty())
         DEBG << out;
+
     if (auto err = p.readAllStandardError(); !err.isEmpty())
         WARN << err;
+
     if (p.exitCode() != 0)
         throw runtime_error(tr("Failed initializing virtual environment. Exit code: %1.")
                                 .arg(p.exitCode()).toStdString());
-
-    DEBG << "Upgrade pip";
-    p.setProgram(toQString(venvPath() / BIN / PIP));
-    p.setArguments({u"install"_s, u"--upgrade"_s, u"pip"_s, });
-    p.start();
-    p.waitForFinished();
 }
 
 path Plugin::venvPath() const { return dataLocation() / VENV; }
@@ -298,23 +296,32 @@ bool Plugin::checkPackages(const QStringList &packages) const
 
     QProcess p;
     p.setProgram(toQString(venvPath() / BIN / PIP));
-    p.setArguments({u"inspect"_s});
+    p.setArguments({u"freeze"_s});
     p.start();
-    p.waitForFinished();
+    p.waitForFinished(-1);
 
     if (p.exitStatus() == QProcess::ExitStatus::NormalExit && p.exitCode() == EXIT_SUCCESS)
     {
-        const auto output = p.readAllStandardOutput();
-        const auto installed = QJsonDocument::fromJson(output).object()["installed"_L1].toArray();
-        auto view = installed
-                    | views::transform([](const auto &v){ return v["metadata"_L1]["name"_L1].toString().toLower(); });
-        set<QString> pkgs(view.begin(), view.end());
+        set<QString> pkgs;
+        QTextStream stream(&p);
+        while (!stream.atEnd())
+        {
+            const auto line = stream.readLine();
+            const auto tokens = line.split(u"=="_s);
+            if (tokens.size() != 2)
+                WARN << "Unexpected line format in pip freeze output:" << line;
+            else
+                pkgs.insert(tokens[0].toLower());
+        }
+
         return ranges::all_of(packages,
                               [&pkgs](const QString &pkg) { return pkgs.contains(pkg.toLower()); });
     }
     else
     {
-        WARN << "Failed inspecting packages with exit code" << p.exitCode();
+        WARN << "Failed running 'pip freeze'. Exit code" << p.exitCode();
+        if (const auto stderr = p.readAllStandardError(); !stderr.isEmpty())
+            WARN << stderr;
         return false;
     }
 }
@@ -331,12 +338,18 @@ QString Plugin::installPackages(const QStringList &packages) const
                 .arg(packages.join(u", "_s), (QStringList(p.program()) << p.arguments()).join(u" "_s));
 
     p.start();
-    p.waitForFinished();
+    p.waitForFinished(-1);
 
-    auto success = p.exitStatus() == QProcess::ExitStatus::NormalExit && p.exitCode() == EXIT_SUCCESS;
+    const auto stdout = p.readAllStandardOutput();
+    if (!stdout.isEmpty())
+        DEBG << stdout;
 
-    if (!success)
-        return QString::fromUtf8(p.readAllStandardError());
+    if (p.exitStatus() != QProcess::ExitStatus::NormalExit || p.exitCode() != EXIT_SUCCESS)
+    {
+        const auto stderr = p.readAllStandardError();
+        WARN << stderr;
+        return QString::fromUtf8(stderr);
+    }
 
     return {};
 }
