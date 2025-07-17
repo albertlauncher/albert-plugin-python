@@ -26,29 +26,14 @@ using namespace albert::util;
 using namespace albert;
 using namespace std;
 
-
-#define CATCH_PYBIND11_OVERRIDE_PURE(ret, base, func, ...) \
-try { PYBIND11_OVERRIDE_PURE(ret, base, func, __VA_ARGS__ ); } \
-catch (const std::exception &e) { CRIT << typeid(base).name() << #func << e.what(); }
-
-#define CATCH_PYBIND11_OVERRIDE(ret, base, func, ...) \
-try { PYBIND11_OVERRIDE(ret, base, func, __VA_ARGS__ ); } \
-catch (const std::exception &e) { CRIT << typeid(base).name() << #func << e.what(); }
-
 // Workaround dysfunctional mixin behavior.
 // See https://github.com/pybind/pybind11/issues/5405
 #define WORKAROUND_PYBIND_5405(name) \
 QString name() const override { \
-    try { \
-        py::gil_scoped_acquire gil; \
-        if (auto py_instance = py::cast(this); py::isinstance<PluginInstance>(py_instance)) \
-            return py::cast<PluginInstance*>(py_instance)->loader().metadata().name; \
-        PYBIND11_OVERRIDE_PURE(QString, Base, name, ); \
-    } \
-    catch (const std::runtime_error &e) { \
-        CRIT << __PRETTY_FUNCTION__ << e.what(); \
-    } \
-    return {}; \
+    py::gil_scoped_acquire gil; \
+    if (auto py_instance = py::cast(this); py::isinstance<PluginInstance>(py_instance)) \
+        return py::cast<PluginInstance*>(py_instance)->loader().metadata().name; \
+    PYBIND11_OVERRIDE_PURE(QString, Base, name, ); \
 }
 
 class PyPI : public PluginInstance
@@ -297,40 +282,22 @@ class PyItemTrampoline : Item
 {
 public:
     QString id() const override
-    {
-        CATCH_PYBIND11_OVERRIDE_PURE(QString, Item, id);
-        return {};
-    }
+    { PYBIND11_OVERRIDE_PURE(QString, Item, id); }
 
     QString text() const override
-    {
-        CATCH_PYBIND11_OVERRIDE_PURE(QString, Item, text);
-        return {};
-    }
+    { PYBIND11_OVERRIDE_PURE(QString, Item, text); }
 
     QString subtext() const override
-    {
-        CATCH_PYBIND11_OVERRIDE_PURE(QString, Item, subtext);
-        return {};
-    }
+    { PYBIND11_OVERRIDE_PURE(QString, Item, subtext); }
 
     QStringList iconUrls() const override
-    {
-        CATCH_PYBIND11_OVERRIDE_PURE(QStringList, Item, iconUrls);
-        return {};
-    }
+    { PYBIND11_OVERRIDE_PURE(QStringList, Item, iconUrls); }
 
     QString inputActionText() const override
-    {
-        CATCH_PYBIND11_OVERRIDE_PURE(QString, Item, inputActionText);
-        return {};
-    }
+    { PYBIND11_OVERRIDE_PURE(QString, Item, inputActionText); }
 
     vector<Action> actions() const override
-    {
-        CATCH_PYBIND11_OVERRIDE_PURE(vector<Action>, Item, actions);
-        return {};
-    }
+    { PYBIND11_OVERRIDE_PURE(vector<Action>, Item, actions); }
 };
 
 
@@ -348,39 +315,25 @@ class PyTQH : public PyE<Base>
 {
 public:
     QString synopsis(const QString &query) const override
-    {
-        CATCH_PYBIND11_OVERRIDE(QString, Base, synopsis, query);
-        return {};
-    }
+    { PYBIND11_OVERRIDE(QString, Base, synopsis, query); }
 
     bool allowTriggerRemap() const override
-    {
-        CATCH_PYBIND11_OVERRIDE(bool, Base, allowTriggerRemap);
-        return {};
-    }
+    { PYBIND11_OVERRIDE(bool, Base, allowTriggerRemap); }
 
     QString defaultTrigger() const override
-    {
-        CATCH_PYBIND11_OVERRIDE(QString, Base, defaultTrigger);
-        return {};
-    }
+    { PYBIND11_OVERRIDE(QString, Base, defaultTrigger); }
 
     bool supportsFuzzyMatching() const override
-    {
-        CATCH_PYBIND11_OVERRIDE(bool, Base, supportsFuzzyMatching);
-        return {};
-    }
+    { PYBIND11_OVERRIDE(bool, Base, supportsFuzzyMatching); }
 
     void setFuzzyMatching(bool enabled) override
-    {
-        CATCH_PYBIND11_OVERRIDE(void, Base, setFuzzyMatching, enabled);
-    }
+    { PYBIND11_OVERRIDE(void, Base, setFuzzyMatching, enabled); }
 
     // No type mismatch workaround required since base class is not called.
     void handleTriggerQuery(albert::Query &query) override
     {
         albert::Query * query_ptr = &query;
-        CATCH_PYBIND11_OVERRIDE_PURE(void, Base, handleTriggerQuery, query_ptr);
+        PYBIND11_OVERRIDE_PURE(void, Base, handleTriggerQuery, query_ptr);
     }
 };
 
@@ -406,10 +359,7 @@ public:
 
     // No type mismatch workaround required since base class is not called.
     vector<RankItem> handleGlobalQuery(const albert::Query &query) override
-    {
-        CATCH_PYBIND11_OVERRIDE_PURE(vector<RankItem>, Base, handleGlobalQuery, &query);
-        return {};
-    }
+    { PYBIND11_OVERRIDE_PURE(vector<RankItem>, Base, handleGlobalQuery, &query); }
 };
 
 
@@ -433,7 +383,7 @@ public:
     }
 
     void updateIndexItems() override
-    { CATCH_PYBIND11_OVERRIDE_PURE(void, Base, updateIndexItems); }
+    { PYBIND11_OVERRIDE_PURE(void, Base, updateIndexItems); }
 };
 
 
@@ -442,8 +392,5 @@ class PyFQH : public PyE<Base>
 {
 public:
     vector<shared_ptr<Item>> fallbacks(const QString &query) const override
-    {
-        CATCH_PYBIND11_OVERRIDE_PURE(vector<shared_ptr<Item>>, FallbackHandler, fallbacks, query);
-        return {};
-    }
+    { PYBIND11_OVERRIDE_PURE(vector<shared_ptr<Item>>, FallbackHandler, fallbacks, query); }
 };
