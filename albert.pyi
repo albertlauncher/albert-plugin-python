@@ -637,7 +637,7 @@ class RankItem:
 
     def __init__(self,
                  item: Item,
-                 score: float):
+                 score: float|Match):
         ...
 
     item: Item
@@ -655,11 +655,6 @@ class GlobalQueryHandler(TriggerQueryHandler):
         Implements ``TriggerQueryHandler.handleTriggerQuery()``.
 
         Runs ``GlobalQueryHandler.handleGlobalQuery()``, applies usage scores, sorts and adds items to ``query``.
-        """
-
-    def applyUsageScore(self, rank_items: List[RankItem]):
-        """
-        Modifies the score of ``items`` according to the users usage in place.
         """
 
     @abstractmethod

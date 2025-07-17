@@ -219,7 +219,6 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
             unique_ptr<GlobalQueryHandler, TrampolineDeleter<GlobalQueryHandler, PyGQH<>>>
             >(m, "GlobalQueryHandler")
         .def(py::init<>())
-        .def("applyUsageScore", &GlobalQueryHandler::applyUsageScore)
         .def("handleGlobalQuery", &GlobalQueryHandler::handleGlobalQuery, py::arg("query"))
         ;
 
