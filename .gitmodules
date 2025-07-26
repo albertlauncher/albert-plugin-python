@@ -1,3 +1,84 @@
 [submodule "pybind11"]
 	path = pybind11
 	url = https://github.com/pybind/pybind11
+[submodule "plugins/arch_wiki"]
+	path = plugins/arch_wiki
+	url = https://github.com/albertlauncher/albert-plugin-python-arch-wiki
+[submodule "plugins/aur"]
+	path = plugins/aur
+	url = https://github.com/albertlauncher/albert-plugin-python-aur
+[submodule "plugins/bitwarden"]
+	path = plugins/bitwarden
+	url = https://github.com/albertlauncher/albert-plugin-python-bitwarden
+[submodule "plugins/coingecko"]
+	path = plugins/coingecko
+	url = https://github.com/albertlauncher/albert-plugin-python-coingecko
+[submodule "plugins/color"]
+	path = plugins/color
+	url = https://github.com/albertlauncher/albert-plugin-python-color
+[submodule "plugins/copyq"]
+	path = plugins/copyq
+	url = https://github.com/albertlauncher/albert-plugin-python-copyq
+[submodule "plugins/dice_roll"]
+	path = plugins/dice_roll
+	url = https://github.com/albertlauncher/albert-plugin-python-dice-roll
+[submodule "plugins/docker"]
+	path = plugins/docker
+	url = https://github.com/albertlauncher/albert-plugin-python-docker
+[submodule "plugins/duckduckgo"]
+	path = plugins/duckduckgo
+	url = https://github.com/albertlauncher/albert-plugin-python-duckduckgo
+[submodule "plugins/emoji"]
+	path = plugins/emoji
+	url = https://github.com/albertlauncher/albert-plugin-python-emoji
+[submodule "plugins/goldendict"]
+	path = plugins/goldendict
+	url = https://github.com/albertlauncher/albert-plugin-python-goldendict
+[submodule "plugins/jetbrains_projects"]
+	path = plugins/jetbrains_projects
+	url = https://github.com/albertlauncher/albert-plugin-python-jetbrains-projects
+[submodule "plugins/kill"]
+	path = plugins/kill
+	url = https://github.com/albertlauncher/albert-plugin-python-kill
+[submodule "plugins/locate"]
+	path = plugins/locate
+	url = https://github.com/albertlauncher/albert-plugin-python-locate
+[submodule "plugins/pacman"]
+	path = plugins/pacman
+	url = https://github.com/albertlauncher/albert-plugin-python-pacman
+[submodule "plugins/pass"]
+	path = plugins/pass
+	url = https://github.com/albertlauncher/albert-plugin-python-pass
+[submodule "plugins/pomodoro"]
+	path = plugins/pomodoro
+	url = https://github.com/albertlauncher/albert-plugin-python-pomodoro
+[submodule "plugins/python_eval"]
+	path = plugins/python_eval
+	url = https://github.com/albertlauncher/albert-plugin-python-python-eval
+[submodule "plugins/syncthing"]
+	path = plugins/syncthing
+	url = https://github.com/albertlauncher/albert-plugin-python-syncthing
+[submodule "plugins/tex_to_unicode"]
+	path = plugins/tex_to_unicode
+	url = https://github.com/albertlauncher/albert-plugin-python-tex-to-unicode
+[submodule "plugins/translators"]
+	path = plugins/translators
+	url = https://github.com/albertlauncher/albert-plugin-python-translators
+[submodule "plugins/unit_converter"]
+	path = plugins/unit_converter
+	url = https://github.com/albertlauncher/albert-plugin-python-unit-converter
+[submodule "plugins/virtualbox"]
+	path = plugins/virtualbox
+	url = https://github.com/albertlauncher/albert-plugin-python-virtualbox
+[submodule "plugins/vscode_projects"]
+	path = plugins/vscode_projects
+	url = https://github.com/albertlauncher/albert-plugin-python-vscode-projects
+[submodule "plugins/wikipedia"]
+	path = plugins/wikipedia
+	url = https://github.com/albertlauncher/albert-plugin-python-wikipedia
+[submodule "plugins/x_window_switcher"]
+	path = plugins/x_window_switcher
+	url = https://github.com/albertlauncher/albert-plugin-python-x-window-switcher
+[submodule "plugins/zeal"]
+	path = plugins/zeal
+	url = https://github.com/albertlauncher/albert-plugin-python-zeal
