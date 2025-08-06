@@ -4,6 +4,7 @@
     "description": "Extend Albert using Python plugins",
     "description[de]": "Albert durch Python-Plugins erweitern",
     "license": "ALL",
+    "maintainers": ["@manuelschneid3r"],
     "name": "Python plugins",
     "name[de]": "Python-Plugins",
     "plugin_dependencies": ["applications"],
