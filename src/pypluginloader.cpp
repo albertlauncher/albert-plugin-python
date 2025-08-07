@@ -30,7 +30,9 @@ static const auto ATTR_MD_VERSION     = "md_version";
 static const auto ATTR_MD_NAME        = "md_name";
 static const auto ATTR_MD_DESCRIPTION = "md_description";
 static const auto ATTR_MD_AUTHORS     = "md_authors";
+static const auto ATTR_MD_MAINTAINERS = "md_maintainers";
 static const auto ATTR_MD_URL         = "md_url";
+static const auto ATTR_MD_README_URL  = "md_readme_url";
 static const auto ATTR_MD_BIN_DEPS    = "md_bin_dependencies";
 static const auto ATTR_MD_LIB_DEPS    = "md_lib_dependencies";
 static const auto ATTR_MD_CREDITS     = "md_credits";
@@ -115,8 +117,17 @@ PyPluginLoader::PyPluginLoader(const Plugin &plugin, const QString &module_path)
                         else if (target_name == ATTR_MD_URL)
                             metadata_.url = value;
 
+                        else if (target_name == ATTR_MD_README_URL)
+                            metadata_.readme_url = value;
+
+
+                        // >>> Remove these somewhen in future
+
                         else if (target_name == ATTR_MD_AUTHORS)
                             metadata_.authors = {value};
+
+                        else if (target_name == ATTR_MD_MAINTAINERS)
+                            metadata_.maintainers = {value};
 
                         else if (target_name == ATTR_MD_LIB_DEPS)
                             metadata_.runtime_dependencies = {value};
@@ -126,6 +137,8 @@ PyPluginLoader::PyPluginLoader(const Plugin &plugin, const QString &module_path)
 
                         else if (target_name == ATTR_MD_CREDITS)
                             metadata_.third_party_credits = {value};
+
+                        // <<<
                     }
 
                     if (py::isinstance(py_value, ast.attr("List"))){
@@ -136,6 +149,9 @@ PyPluginLoader::PyPluginLoader(const Plugin &plugin, const QString &module_path)
 
                         if (target_name == ATTR_MD_AUTHORS)
                             metadata_.authors = list;
+
+                        else if (target_name == ATTR_MD_MAINTAINERS)
+                            metadata_.maintainers = list;
 
                         else if (target_name == ATTR_MD_LIB_DEPS)
                             metadata_.runtime_dependencies = list;

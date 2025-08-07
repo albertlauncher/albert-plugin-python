@@ -3,7 +3,7 @@
 .. https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html
 
 ====================================================================================================
-Albert Python interface v3.0
+Albert Python interface v3.1
 ====================================================================================================
 
 To be a valid Python plugin a Python module has to contain at least the mandatory metadata fields
@@ -39,8 +39,14 @@ Optional metadata variables
 ``md_url`` : *str*
     Browsable source, issues etc
 
+``md_readme_url`` : *str*
+    Human readable online README
+
 ``md_authors`` : *List(str)*
     The authors. Preferably using mentionable Github usernames.
+
+``md_maintainers`` : *List(str)*
+    The current maintainers. Preferably using mentionable Github usernames.
 
 ``md_bin_dependencies`` : *List(str)*
     Required executable(s). Have to match the name of the executable in $PATH.
@@ -51,11 +57,18 @@ Optional metadata variables
 ``md_credits`` : *List(str)*
     Third party credit(s) and license notes
 
+``md_platforms`` : *List(str)*
+    List of supported platforms. If empty all platforms are supported.
+
 
 ====================================================================================================
 Changelog
 ====================================================================================================
 
+- ``v3.1``
+
+    - Add metadata field ``md_readme_url``.
+    - Add metadata field ``md_maintainers``.
 
 - ``v3.0``
 
