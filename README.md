@@ -1,1 +1,1 @@
-# albert-plugin-python
+# Albert plugin: Python plugins
