@@ -16,6 +16,7 @@
 #include <QWidget>
 #include <albert/extensionregistry.h>
 #include <albert/fallbackhandler.h>
+#include <albert/iconutil.h>
 #include <albert/indexqueryhandler.h>
 #include <albert/logging.h>
 #include <albert/plugininstance.h>
@@ -290,11 +291,11 @@ public:
     QString subtext() const override
     { PYBIND11_OVERRIDE_PURE(QString, Item, subtext); }
 
-    QStringList iconUrls() const override
-    { PYBIND11_OVERRIDE_PURE(QStringList, Item, iconUrls); }
-
     QString inputActionText() const override
     { PYBIND11_OVERRIDE_PURE(QString, Item, inputActionText); }
+
+    std::unique_ptr<Icon> icon() const override
+    { PYBIND11_OVERRIDE_PURE(unique_ptr<Icon>, Item, icon); }
 
     vector<Action> actions() const override
     { PYBIND11_OVERRIDE_PURE(vector<Action>, Item, actions); }

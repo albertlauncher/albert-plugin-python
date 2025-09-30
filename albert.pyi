@@ -3,7 +3,7 @@
 .. https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html
 
 ====================================================================================================
-Albert Python interface v3.1
+Albert Python interface v4.0
 ====================================================================================================
 
 To be a valid Python plugin a Python module has to contain at least the mandatory metadata fields
@@ -65,10 +65,36 @@ Optional metadata variables
 Changelog
 ====================================================================================================
 
+- ``v4.0``
+
+  - Add built-in icon factories and related types:
+    - Add class ``Brush``
+    - Add class ``Color``
+    - Add class ``Icon``
+    - Add enum ``StandardIconType``
+    - Add function ``makeImageIcon(str|Path)``
+    - Add function ``makeFileTypeIcon(str|Path)``
+    - Add function ``makeStandardIcon(StandardIconType)``
+    - Add function ``makeThemeIcon(str)``
+    - Add function ``makeGraphemeIcon(str, float, Color)``
+    - Add function ``makeIconifiedIcon(Icon, Color, float, int, Color)``
+    - Add function ``makeComposedIcon(Icon, Icon, float, float, float, float, float, float)``
+  - ``Item``
+    - Remove abstract method ``Item.iconUrls(self) -> List[str]``
+    - Add abstract method ``Item.icon(self) -> Icon``
+  - ``StandardItem``
+    - Remove property ``iconUrls``
+    - Add property ``icon_factory``
+    - Rename property  ``inputActionText`` to ``input_action_text``
+  - ``RankItem``
+    - Remove property access
+  - ``IndexItem``
+    - Remove property access
+
 - ``v3.1``
 
-    - Add metadata field ``md_readme_url``.
-    - Add metadata field ``md_maintainers``.
+  - Add metadata field ``md_readme_url``.
+  - Add metadata field ``md_maintainers``.
 
 - ``v3.0``
 
@@ -172,12 +198,9 @@ Changelog
 """
 
 from abc import abstractmethod, ABC
-from typing import Any
-from typing import Callable
-from typing import List
-from typing import Optional
-from typing import overload
+from enum import Enum
 from pathlib import Path
+from typing import Any, Callable, List, overload
 
 class PluginInstance(ABC):
     """
@@ -314,6 +337,168 @@ class Action:
         ...
 
 
+class Icon(ABC):
+    pass
+
+
+def makeImageIcon(path: str | Path) -> Icon:
+    """
+    Returns an icon from an image file at _path_.
+    """
+
+
+def makeFileTypeIcon(path: str | Path) -> Icon:
+    """
+    Returns an icon representing the file type of the file at _path_.
+    """
+
+
+class StandardIconType(Enum):
+    TitleBarMenuButton = ...,
+    TitleBarMinButton = ...,
+    TitleBarMaxButton = ...,
+    TitleBarCloseButton = ...,
+    TitleBarNormalButton = ...,
+    TitleBarShadeButton = ...,
+    TitleBarUnshadeButton = ...,
+    TitleBarContextHelpButton = ...,
+    DockWidgetCloseButton = ...,
+    MessageBoxInformation = ...,
+    MessageBoxWarning = ...,
+    MessageBoxCritical = ...,
+    MessageBoxQuestion = ...,
+    DesktopIcon = ...,
+    TrashIcon = ...,
+    ComputerIcon = ...,
+    DriveFDIcon = ...,
+    DriveHDIcon = ...,
+    DriveCDIcon = ...,
+    DriveDVDIcon = ...,
+    DriveNetIcon = ...,
+    DirOpenIcon = ...,
+    DirClosedIcon = ...,
+    DirLinkIcon = ...,
+    DirLinkOpenIcon = ...,
+    FileIcon = ...,
+    FileLinkIcon = ...,
+    ToolBarHorizontalExtensionButton = ...,
+    ToolBarVerticalExtensionButton = ...,
+    FileDialogStart = ...,
+    FileDialogEnd = ...,
+    FileDialogToParent = ...,
+    FileDialogNewFolder = ...,
+    FileDialogDetailedView = ...,
+    FileDialogInfoView = ...,
+    FileDialogContentsView = ...,
+    FileDialogListView = ...,
+    FileDialogBack = ...,
+    DirIcon = ...,
+    DialogOkButton = ...,
+    DialogCancelButton = ...,
+    DialogHelpButton = ...,
+    DialogOpenButton = ...,
+    DialogSaveButton = ...,
+    DialogCloseButton = ...,
+    DialogApplyButton = ...,
+    DialogResetButton = ...,
+    DialogDiscardButton = ...,
+    DialogYesButton = ...,
+    DialogNoButton = ...,
+    ArrowUp = ...,
+    ArrowDown = ...,
+    ArrowLeft = ...,
+    ArrowRight = ...,
+    ArrowBack = ...,
+    ArrowForward = ...,
+    DirHomeIcon = ...,
+    CommandLink = ...,
+    VistaShield = ...,
+    BrowserReload = ...,
+    BrowserStop = ...,
+    MediaPlay = ...,
+    MediaStop = ...,
+    MediaPause = ...,
+    MediaSkipForward = ...,
+    MediaSkipBackward = ...,
+    MediaSeekForward = ...,
+    MediaSeekBackward = ...,
+    MediaVolume = ...,
+    MediaVolumeMuted = ...,
+    LineEditClearButton = ...,
+    DialogYesToAllButton = ...,
+    DialogNoToAllButton = ...,
+    DialogSaveAllButton = ...,
+    DialogAbortButton = ...,
+    DialogRetryButton = ...,
+    DialogIgnoreButton = ...,
+    RestoreDefaultsButton = ...,
+    TabCloseButtom = ...
+
+
+def makeStandardIcon(type: StandardIconType) -> Icon:
+    """
+    Returns a standard icon for the given _type_.
+    """
+
+
+def makeThemeIcon(name: str) -> Icon:
+    """
+    Returns an icon from the current icon theme with the given _icon_name_.
+    """
+
+
+class Color:
+    ...
+
+    def __init__(self,
+                 r: int,
+                 g: int,
+                 b: int,
+                 a: int = 255):
+        ...
+
+    r: int
+    g: int
+    b: int
+    a: int
+
+
+def makeGraphemeIcon(grapheme: str,
+                     scalar: float | None = None,
+                     color: Color | None = None) -> Icon:
+    """
+    Returns an icon rendering the given _grapheme_, scaled by _scalar_ and colored with _color_.
+    """
+
+
+def makeIconifiedIcon(src: Icon,
+                      color: Color | None = None,
+                      border_radius: float | None = None,
+                      border_width: int | None = None,
+                      border_color: Color | None = None) -> Icon:
+    """
+    Returns an iconified _src_. i.e. drawn in a colored rounded rectangle with a border.
+    _color_ specifies the background color, _border_width_ the border width in device independent pixels,
+    _border_radius_ the relative border radius (0.0 - 1.0), and _border_color_ the border color.
+    """
+
+
+
+def makeComposedIcon(src1: Icon,
+                     src2: Icon,
+                     size1: float | None  = None,
+                     size2: float | None  = None,
+                     x1: float | None  = None,
+                     y1: float | None  = None,
+                     x2: float | None  = None,
+                     y2: float | None  = None) -> Icon:
+    """
+    Returns a composed icon of _src1_ and _src2_.
+    _size1_ and _size2_ specify the relative sizes (0.0 - 1.0) of the icons.
+    _x1_, _y1_, _x2_, and _y2_ specify the relative positions (0.0 - 1.0, 0.5 is centered) of the icons.
+    """
+
+
 class Item(ABC):
     """
     See also:
@@ -345,12 +530,9 @@ class Item(ABC):
         """
 
     @abstractmethod
-    def iconUrls(self) -> List[str]:
+    def makeIcon(self) -> Icon:
         """
-        Returns the item icon URLs.
-
-        See also:
-             `pixmapFromUrl() C++ Reference <https://albertlauncher.github.io/reference/namespacealbert.html#ab33e1e7fab94ddf6b1b7f4683577602c>`_
+        Creates and returns an item icon on demand.
         """
 
     @abstractmethod
@@ -369,12 +551,13 @@ class StandardItem(Item):
     """
 
     def __init__(self,
-                 id: str = '',
-                 text: str = '',
-                 subtext: str = '',
-                 inputActionText: Optional[str] = '',
-                 iconUrls: List[str] = [],
-                 actions: List[Action] = []):
+                 id: str | None = None,
+                 text: str | None = None,
+                 subtext: str | None = None,
+                 icon_factory: Callable[[], Icon] | None = None,
+                 actions: List[Action] | None = None,
+                 input_action_text: str | None = None
+                 ):
         ...
 
     id: str
@@ -392,22 +575,19 @@ class StandardItem(Item):
     The item subtext.
     """
 
-    inputActionText: str
+    icon_factory: Callable[[], Icon]
     """
-    The item input action text.
-    """
-
-    iconUrls: List[str]
-    """
-    The item icon URLs.
-
-    See also:
-         `pixmapFromUrl() C++ Reference <https://albertlauncher.github.io/reference/namespacealbert.html#ab33e1e7fab94ddf6b1b7f4683577602c>`_
+    The item icon.
     """
 
     actions: List[Action]
     """
     The item actions.
+    """
+
+    input_action_text: str
+    """
+    The item input action text.
     """
 
 
@@ -494,38 +674,6 @@ class MatchConfig:
     """
 
 
-class Matcher:
-    """
-    See also:
-        `Matcher C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Matcher.html>`_
-    """
-
-    def __init__(self,
-                 string: str,
-                 config: MatchConfig = MatchConfig()):
-        """
-        Constructs a ``Matcher`` for the given ``string`` and ``config``.
-        """
-
-    @overload
-    def match(self, string: str) -> Match:
-        """
-        Returns a ``Match`` for the ``string``.
-        """
-
-    @overload
-    def match(self, strings: List[str]) -> Match:
-        """
-        Returns the best ``Match`` for the ``strings``.
-        """
-
-    @overload
-    def match(self, *args: str) -> Match:
-        """
-        Returns the best ``Match`` for the ``args``.
-        """
-
-
 class Match:
     """
     See also:
@@ -561,6 +709,39 @@ class Match:
         """
         Converts the match to ``float`` using ``score()``.
         """
+
+
+class Matcher:
+    """
+    See also:
+        `Matcher C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Matcher.html>`_
+    """
+
+    def __init__(self,
+                 string: str,
+                 config: MatchConfig = MatchConfig()):
+        """
+        Constructs a ``Matcher`` for the given ``string`` and ``config``.
+        """
+
+    @overload
+    def match(self, string: str) -> Match:
+        """
+        Returns a ``Match`` for the ``string``.
+        """
+
+    @overload
+    def match(self, strings: List[str]) -> Match:
+        """
+        Returns the best ``Match`` for the ``strings``.
+        """
+
+    @overload
+    def match(self, *args: str) -> Match:
+        """
+        Returns the best ``Match`` for the ``args``.
+        """
+
 
 class Extension(ABC):
     """
@@ -653,9 +834,6 @@ class RankItem:
                  score: float|Match):
         ...
 
-    item: Item
-    score: float
-
 
 class GlobalQueryHandler(TriggerQueryHandler):
     """
@@ -687,9 +865,6 @@ class IndexItem:
                  item: Item,
                  string: str):
         ...
-
-    item: Item
-    string: str
 
 
 class IndexQueryHandler(GlobalQueryHandler):
@@ -760,7 +935,6 @@ class Notification:
         ...
 
 
-
 def debug(arg: Any):
     """
     Logs ``str(arg)`` as debug message in the logging category of this plugin.
@@ -779,6 +953,7 @@ def info(arg: Any):
         This function is not part of the albert module and here for reference only.
         The attribute is attached to the module at load time.
     """
+
 
 def warning(arg: Any):
     """

@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <pybind11/functional.h>  // function support
+#include <pybind11/native_enum.h>  // enum support
 #include <pybind11/stl/filesystem.h>  // for automatic path conversion
 #include "cast_specialization.hpp" // Has to be imported first
 #include "trampolineclasses.hpp" // Has to be imported first
@@ -12,6 +14,7 @@
 #include <albert/matcher.h>
 #include <albert/notification.h>
 #include <albert/plugin/applications.h>
+#include <albert/iconutil.h>
 #include <albert/plugininstance.h>
 #include <albert/standarditem.h>
 #include <albert/systemutil.h>
@@ -71,7 +74,6 @@ struct TrampolineDeleter
 
 PYBIND11_EMBEDDED_MODULE(albert, m)
 {
-    using namespace albert;
 
     // ------------------------------------------------------------------------
 
@@ -108,38 +110,29 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         .def("text", &Item::text)
         .def("subtext", &Item::subtext)
         .def("inputActionText", &Item::inputActionText)
-        .def("iconUrls", &Item::iconUrls)
+        .def("icon", &Item::icon)
         .def("actions", &Item::actions)
         ;
 
     py::class_<StandardItem, Item, shared_ptr<StandardItem>>(m, "StandardItem")
-        // For now do not propagate internal api changes to the python api // TODO v4.0
-        // .def(py::init(py::overload_cast<QString,QString,QString,QString,QStringList,vector<Action>>(&StandardItem::make)),
-        .def(py::init([](QString id, QString text, QString subtext, QString input_action_text, QStringList icon_urls, vector<Action>actions)
-            {
-                 py::gil_scoped_acquire acquire;
-                 return StandardItem::make(::move(id),
-                                           ::move(text),
-                                           ::move(subtext),
-                                           ::move(icon_urls),
-                                           ::move(actions),
-                                           ::move(input_action_text));
-            }),
-            py::arg("id") = QString(),
-            py::arg("text") = QString(),
-            py::arg("subtext") = QString(),
-            py::arg("inputActionText") = QString(),
-            py::arg("iconUrls") = QStringList(),
-            py::arg("actions") = vector<Action>())
+        .def(py::init<QString, QString, QString, std::function<std::unique_ptr<Icon>()>, vector<Action>, QString>(),
+             py::arg("id") = QString(),
+             py::arg("text") = QString(),
+             py::arg("subtext") = QString(),
+             py::arg("icon_factory") = nullptr,
+             py::arg("actions") = vector<Action>(),
+             py::arg("input_action_text") = QString())
         .def_property("id", &StandardItem::id, &StandardItem::setId)
         .def_property("text", &StandardItem::text, &StandardItem::setText)
         .def_property("subtext", &StandardItem::subtext, &StandardItem::setSubtext)
-        .def_property("iconUrls", &StandardItem::iconUrls, &StandardItem::setIconUrls)
+        .def_property("icon_factory", &StandardItem::iconFactory, &StandardItem::setIconFactory)
         .def_property("actions", &StandardItem::actions, &StandardItem::setActions)
-        .def_property("inputActionText", &StandardItem::inputActionText, &StandardItem::setInputActionText)
-        ;
+        .def_property("input_action_text", &StandardItem::inputActionText, &StandardItem::setInputActionText);
+
+    // ------------------------------------------------------------------------
 
     py::class_<Query, unique_ptr<Query, py::nodelete>>(m, "Query")
+        .def("__str__", &Query::operator QString)
         .def_property_readonly("trigger", &Query::trigger)
         .def_property_readonly("string", &Query::string)
         .def_property_readonly("isValid", &Query::isValid)
@@ -210,8 +203,6 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     py::class_<RankItem>(m, "RankItem")
         .def(py::init<shared_ptr<Item>,float>(), py::arg("item"), py::arg("score"))
-        .def_readwrite("item", &RankItem::item)
-        .def_readwrite("score", &RankItem::score)
         ;
 
     py::class_<
@@ -226,8 +217,6 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     py::class_<IndexItem>(m, "IndexItem")
         .def(py::init<shared_ptr<Item>,QString>(), py::arg("item"), py::arg("string"))
-        .def_readwrite("item", &IndexItem::item)
-        .def_readwrite("string", &IndexItem::string)
         ;
 
     py::class_<
@@ -248,6 +237,146 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         .def(py::init<>())
         .def("fallbacks", &FallbackHandler::fallbacks)
         ;
+
+    // ------------------------------------------------------------------------
+
+    py::classh<Icon>(m, "Icon")
+        .def("__str__", &Icon::toUrl)
+        ;
+
+    py::class_<QBrush>(m, "Brush")
+        ;
+
+    py::class_<QColor>(m, "Color")
+        .def(py::init<int, int, int, int>(),
+             py::arg("r"),
+             py::arg("g"),
+             py::arg("b"),
+             py::arg("a") = 255)
+        .def_property("r", &QColor::setRed, &QColor::red)
+        .def_property("g", &QColor::setGreen, &QColor::green)
+        .def_property("b", &QColor::setBlue, &QColor::blue)
+        .def_property("a", &QColor::setAlpha, &QColor::alpha)
+        ;
+
+    m.def("makeImageIcon", py::overload_cast<const QString &>(&makeImageIcon), py::arg("path"));
+    m.def("makeImageIcon", py::overload_cast<const filesystem::path&>(&makeImageIcon), py::arg("path"));
+
+    m.def("makeFileTypeIcon", py::overload_cast<const QString&>(&makeFileTypeIcon), py::arg("path"));
+    m.def("makeFileTypeIcon", py::overload_cast<const filesystem::path&>(&makeFileTypeIcon), py::arg("path"));
+
+    py::native_enum<StandardIconType>(m, "StandardIconType", "enum.IntEnum")
+        .value("TitleBarMenuButton", TitleBarMenuButton)
+        .value("TitleBarMinButton", TitleBarMinButton)
+        .value("TitleBarMaxButton", TitleBarMaxButton)
+        .value("TitleBarCloseButton", TitleBarCloseButton)
+        .value("TitleBarNormalButton", TitleBarNormalButton)
+        .value("TitleBarShadeButton", TitleBarShadeButton)
+        .value("TitleBarUnshadeButton", TitleBarUnshadeButton)
+        .value("TitleBarContextHelpButton", TitleBarContextHelpButton)
+        .value("DockWidgetCloseButton", DockWidgetCloseButton)
+        .value("MessageBoxInformation", MessageBoxInformation)
+        .value("MessageBoxWarning", MessageBoxWarning)
+        .value("MessageBoxCritical", MessageBoxCritical)
+        .value("MessageBoxQuestion", MessageBoxQuestion)
+        .value("DesktopIcon", DesktopIcon)
+        .value("TrashIcon", TrashIcon)
+        .value("ComputerIcon", ComputerIcon)
+        .value("DriveFDIcon", DriveFDIcon)
+        .value("DriveHDIcon", DriveHDIcon)
+        .value("DriveCDIcon", DriveCDIcon)
+        .value("DriveDVDIcon", DriveDVDIcon)
+        .value("DriveNetIcon", DriveNetIcon)
+        .value("DirOpenIcon", DirOpenIcon)
+        .value("DirClosedIcon", DirClosedIcon)
+        .value("DirLinkIcon", DirLinkIcon)
+        .value("DirLinkOpenIcon", DirLinkOpenIcon)
+        .value("FileIcon", FileIcon)
+        .value("FileLinkIcon", FileLinkIcon)
+        .value("ToolBarHorizontalExtensionButton", ToolBarHorizontalExtensionButton)
+        .value("ToolBarVerticalExtensionButton", ToolBarVerticalExtensionButton)
+        .value("FileDialogStart", FileDialogStart)
+        .value("FileDialogEnd", FileDialogEnd)
+        .value("FileDialogToParent", FileDialogToParent)
+        .value("FileDialogNewFolder", FileDialogNewFolder)
+        .value("FileDialogDetailedView", FileDialogDetailedView)
+        .value("FileDialogInfoView", FileDialogInfoView)
+        .value("FileDialogContentsView", FileDialogContentsView)
+        .value("FileDialogListView", FileDialogListView)
+        .value("FileDialogBack", FileDialogBack)
+        .value("DirIcon", DirIcon)
+        .value("DialogOkButton", DialogOkButton)
+        .value("DialogCancelButton", DialogCancelButton)
+        .value("DialogHelpButton", DialogHelpButton)
+        .value("DialogOpenButton", DialogOpenButton)
+        .value("DialogSaveButton", DialogSaveButton)
+        .value("DialogCloseButton", DialogCloseButton)
+        .value("DialogApplyButton", DialogApplyButton)
+        .value("DialogResetButton", DialogResetButton)
+        .value("DialogDiscardButton", DialogDiscardButton)
+        .value("DialogYesButton", DialogYesButton)
+        .value("DialogNoButton", DialogNoButton)
+        .value("ArrowUp", ArrowUp)
+        .value("ArrowDown", ArrowDown)
+        .value("ArrowLeft", ArrowLeft)
+        .value("ArrowRight", ArrowRight)
+        .value("ArrowBack", ArrowBack)
+        .value("ArrowForward", ArrowForward)
+        .value("DirHomeIcon", DirHomeIcon)
+        .value("CommandLink", CommandLink)
+        .value("VistaShield", VistaShield)
+        .value("BrowserReload", BrowserReload)
+        .value("BrowserStop", BrowserStop)
+        .value("MediaPlay", MediaPlay)
+        .value("MediaStop", MediaStop)
+        .value("MediaPause", MediaPause)
+        .value("MediaSkipForward", MediaSkipForward)
+        .value("MediaSkipBackward", MediaSkipBackward)
+        .value("MediaSeekForward", MediaSeekForward)
+        .value("MediaSeekBackward", MediaSeekBackward)
+        .value("MediaVolume", MediaVolume)
+        .value("MediaVolumeMuted", MediaVolumeMuted)
+        .value("LineEditClearButton", LineEditClearButton)
+        .value("DialogYesToAllButton", DialogYesToAllButton)
+        .value("DialogNoToAllButton", DialogNoToAllButton)
+        .value("DialogSaveAllButton", DialogSaveAllButton)
+        .value("DialogAbortButton", DialogAbortButton)
+        .value("DialogRetryButton", DialogRetryButton)
+        .value("DialogIgnoreButton", DialogIgnoreButton)
+        .value("RestoreDefaultsButton", RestoreDefaultsButton)
+        .value("TabCloseButton", TabCloseButton)
+        .export_values()
+        .finalize()
+        ;
+
+    m.def("makeStandardIcon", &makeStandardIcon, py::arg("type"));
+
+    m.def("makeThemeIcon", &makeThemeIcon, py::arg("name"));
+
+    m.def("makeGraphemeIcon",
+          &makeGraphemeIcon,
+          py::arg("grapheme"),
+          py::arg("scalar") = graphemeIconDefaultScalar(),
+          py::arg("color") = graphemeIconDefaultColor());
+
+    m.def("makeIconifiedIcon",
+          &makeIconifiedIcon,
+          py::arg("src"),
+          py::arg("color") = iconifiedIconDefaultColor(),
+          py::arg("border_radius") = iconifiedIconDefaultBorderRadius(),
+          py::arg("border_width") = iconifiedIconDefaultBorderWidth(),
+          py::arg("border_color") = iconifiedIconDefaultBorderColor());
+
+    m.def("makeComposedIcon",
+          &makeComposedIcon,
+          py::arg("src1"),
+          py::arg("src2"),
+          py::arg("size1") = composedIconDefaultSize(),
+          py::arg("size2") = composedIconDefaultSize(),
+          py::arg("x1") = composedIconDefaultPos1(),
+          py::arg("y1") = composedIconDefaultPos1(),
+          py::arg("x2") = composedIconDefaultPos2(),
+          py::arg("y2") = composedIconDefaultPos2());
 
     // ------------------------------------------------------------------------
 
