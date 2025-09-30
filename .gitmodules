@@ -13,9 +13,6 @@
 [submodule "plugins/coingecko"]
 	path = plugins/coingecko
 	url = https://github.com/albertlauncher/albert-plugin-python-coingecko
-[submodule "plugins/color"]
-	path = plugins/color
-	url = https://github.com/albertlauncher/albert-plugin-python-color
 [submodule "plugins/copyq"]
 	path = plugins/copyq
 	url = https://github.com/albertlauncher/albert-plugin-python-copyq
