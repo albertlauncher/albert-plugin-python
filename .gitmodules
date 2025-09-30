@@ -16,9 +16,6 @@
 [submodule "plugins/copyq"]
 	path = plugins/copyq
 	url = https://github.com/albertlauncher/albert-plugin-python-copyq
-[submodule "plugins/dice_roll"]
-	path = plugins/dice_roll
-	url = https://github.com/albertlauncher/albert-plugin-python-dice-roll
 [submodule "plugins/docker"]
 	path = plugins/docker
 	url = https://github.com/albertlauncher/albert-plugin-python-docker
