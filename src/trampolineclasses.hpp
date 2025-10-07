@@ -279,7 +279,7 @@ private:
 };
 
 
-class PyItemTrampoline : Item
+class PyItemTrampoline : public Item, public py::trampoline_self_life_support
 {
 public:
     QString id() const override

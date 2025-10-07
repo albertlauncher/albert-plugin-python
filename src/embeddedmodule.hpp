@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024 Manuel Schneider
+// Copyright (c) 2017-2025 Manuel Schneider
 
 #pragma once
 
@@ -104,7 +104,7 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
              py::arg("callable"))
         ;
 
-    py::class_<Item, PyItemTrampoline, shared_ptr<Item>>(m, "Item")
+    py::classh<Item, PyItemTrampoline>(m, "Item")
         .def(py::init<>())
         .def("id", &Item::id)
         .def("text", &Item::text)
@@ -114,7 +114,7 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         .def("actions", &Item::actions)
         ;
 
-    py::class_<StandardItem, Item, shared_ptr<StandardItem>>(m, "StandardItem")
+    py::classh<StandardItem, Item>(m, "StandardItem")
         .def(py::init<QString, QString, QString, std::function<std::unique_ptr<Icon>()>, vector<Action>, QString>(),
              py::arg("id") = QString(),
              py::arg("text") = QString(),
@@ -201,7 +201,7 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     // ------------------------------------------------------------------------
 
-    py::class_<RankItem>(m, "RankItem")
+    py::classh<RankItem>(m, "RankItem")
         .def(py::init<shared_ptr<Item>,float>(), py::arg("item"), py::arg("score"))
         ;
 
@@ -215,7 +215,7 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     // ------------------------------------------------------------------------
 
-    py::class_<IndexItem>(m, "IndexItem")
+    py::classh<IndexItem>(m, "IndexItem")
         .def(py::init<shared_ptr<Item>,QString>(), py::arg("item"), py::arg("string"))
         ;
 
