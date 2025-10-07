@@ -204,8 +204,7 @@ from typing import Any, Callable, List, overload
 
 class PluginInstance(ABC):
     """
-    See also:
-        `PluginInstance C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1PluginInstance.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1PluginInstance.html>`_
     """
 
     def id(self) -> str:
@@ -326,8 +325,7 @@ class PluginInstance(ABC):
 
 class Action:
     """
-    See also:
-        `Action C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Action.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Action.html>`_
     """
 
     def __init__(self,
@@ -501,8 +499,7 @@ def makeComposedIcon(src1: Icon,
 
 class Item(ABC):
     """
-    See also:
-        `Item C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Item.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Item.html>`_
     """
 
     @abstractmethod
@@ -544,10 +541,7 @@ class Item(ABC):
 
 class StandardItem(Item):
     """
-    A property based implementation of the ``Item`` interface.
-
-    See also:
-        `StandardItem C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1StandardItem.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1util_1_1StandardItem.html>`_
     """
 
     def __init__(self,
@@ -593,8 +587,7 @@ class StandardItem(Item):
 
 class Query:
     """
-    See also:
-        `Query C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Query.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Query.html>`_
     """
 
     @property
@@ -632,8 +625,7 @@ class Query:
 
 class MatchConfig:
     """
-    See also:
-        `MatchConfig C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1MatchConfig.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1util_1_1MatchConfig.html>`_
     """
 
     def __init__(self,
@@ -676,8 +668,7 @@ class MatchConfig:
 
 class Match:
     """
-    See also:
-        `Match C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Match.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1util_1_1Match.html>`_
     """
 
     def score(self) -> float:
@@ -713,8 +704,7 @@ class Match:
 
 class Matcher:
     """
-    See also:
-        `Matcher C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Matcher.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1util_1_1Matcher.html>`_
     """
 
     def __init__(self,
@@ -745,8 +735,7 @@ class Matcher:
 
 class Extension(ABC):
     """
-    See also:
-        `Extension C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Extension.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1Extension.html>`_
     """
 
     @abstractmethod
@@ -770,8 +759,7 @@ class Extension(ABC):
 
 class TriggerQueryHandler(Extension):
     """
-    See also:
-        `TriggerQueryHandler C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1TriggerQueryHandler.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1TriggerQueryHandler.html>`_
     """
 
     def synopsis(self, query: str) -> str:
@@ -825,8 +813,7 @@ class TriggerQueryHandler(Extension):
 
 class RankItem:
     """
-    See also:
-        `RankItem C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1RankItem.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1RankItem.html>`_
     """
 
     def __init__(self,
@@ -837,8 +824,7 @@ class RankItem:
 
 class GlobalQueryHandler(TriggerQueryHandler):
     """
-    See also:
-        `GlobalQueryHandler C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1GlobalQueryHandler.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1GlobalQueryHandler.html>`_
     """
 
     def handleTriggerQuery(self, query: Query) -> List[RankItem]:
@@ -857,8 +843,7 @@ class GlobalQueryHandler(TriggerQueryHandler):
 
 class IndexItem:
     """
-    See also:
-        `IndexItem C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1IndexItem.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1util_1_1IndexItem.html>`_
     """
 
     def __init__(self,
@@ -869,8 +854,7 @@ class IndexItem:
 
 class IndexQueryHandler(GlobalQueryHandler):
     """
-    See also:
-        `IndexQueryHandler C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1IndexQueryHandler.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1util_1_1IndexQueryHandler.html>`_
     """
 
     def handleGlobalQuery(self, query: Query) -> List[RankItem]:
@@ -902,8 +886,7 @@ class IndexQueryHandler(GlobalQueryHandler):
 
 class FallbackHandler(Extension):
     """
-    See also:
-        `FallbackHandler C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1FallbackHandler.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1FallbackHandler.html>`_
     """
 
     @abstractmethod
@@ -915,8 +898,7 @@ class FallbackHandler(Extension):
 
 class Notification:
     """
-    See also:
-        `Notification C++ Reference <See https://albertlauncher.github.io/reference/classalbert_1_1Notification.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1util_1_1Notification.html>`_
     """
 
     def __init__(self,
