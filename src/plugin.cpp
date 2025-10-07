@@ -88,11 +88,7 @@ Plugin::Plugin()
 {
     ::apps = apps.get();
 
-    DEBG << "Python version:" << u"%1.%2.%3"_s
-                                     .arg(PY_MAJOR_VERSION)
-                                     .arg(PY_MINOR_VERSION)
-                                     .arg(PY_MICRO_VERSION);
-
+    DEBG << "Python version:" << PY_VERSION;
     DEBG << "Pybind11 version:" << u"%1.%2.%3"_s
                                        .arg(PYBIND11_VERSION_MAJOR)
                                        .arg(PYBIND11_VERSION_MINOR)
@@ -257,10 +253,7 @@ QWidget *Plugin::buildConfigWidget()
                                       .arg(PyPluginLoader::MAJOR_INTERFACE_VERSION)
                                       .arg(PyPluginLoader::MINOR_INTERFACE_VERSION));
 
-    ui.label_python_version->setText(u"%1.%2.%3"_s
-                                         .arg(PY_MAJOR_VERSION)
-                                         .arg(PY_MINOR_VERSION)
-                                         .arg(PY_MICRO_VERSION));
+    ui.label_python_version->setText(QString::fromUtf8(PY_VERSION));
 
     ui.label_pybind_version->setText(u"%1.%2.%3"_s
                                          .arg(PYBIND11_VERSION_MAJOR)
