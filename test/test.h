@@ -9,10 +9,17 @@ private slots:
 
     void initTestCase();
 
+    void testBasicPluginInstance();
+    void testExtensionPluginInstance();
+
     void testAction();
     void testItem();
     void testStandardItem();
+    void testRankItem();
+    void testIndexItem();
     void testMatcher();
+    void testIconFactories();
+    void testQuery();
 
     void testTriggerQueryHandler();
     void testGlobalQueryHandler();
