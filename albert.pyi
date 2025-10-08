@@ -200,7 +200,7 @@ Changelog
 from abc import abstractmethod, ABC
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, List, overload
+from typing import Any, Callable, List, overload, final
 
 class PluginInstance(ABC):
     """
@@ -869,6 +869,18 @@ class IndexQueryHandler(GlobalQueryHandler):
     """
     `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1util_1_1IndexQueryHandler.html>`_
     """
+
+    @final
+    def setFuzzyMatching(self, enabled: bool):
+        """
+        Sets the fuzzy matching mode of the internal index to **enabled**.
+        """
+
+    @final
+    def supportsFuzzyMatching(self) -> bool:
+        """
+        Returns ``True``.
+        """
 
     def handleGlobalQuery(self, query: Query) -> List[RankItem]:
         """
