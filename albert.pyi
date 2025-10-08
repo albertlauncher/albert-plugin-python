@@ -779,8 +779,13 @@ class TriggerQueryHandler(Extension):
     def defaultTrigger(self) -> str:
         """
         Returns the default trigger.
+        The base class implementation returns ``Extension.id`` with a space appended.
+        """
 
-        The base class implementation returns an empty string.
+    def setTrigger(self, trigger: str):
+        """
+        Notifies that the user-defined trigger has changed to *trigger*.
+        The base class implementation does nothing.
         """
 
     def supportsFuzzyMatching(self) -> bool:
@@ -788,13 +793,6 @@ class TriggerQueryHandler(Extension):
         Returns ``True`` if the handler supports error tolerant matching, otherwise returns ``False``.
 
         The base class implementation returns ``False``.
-        """
-
-    def setTrigger(self, trigger: str):
-        """
-        Notifies about changes to the user defined ``trigger`` used to call the handler.
-
-        The base class implementation does nothing.
         """
 
     def setFuzzyMatching(self, enabled: bool):

@@ -319,13 +319,16 @@ public:
     { PYBIND11_OVERRIDE(QString, Base, synopsis, query); }
 
     bool allowTriggerRemap() const override
-    { PYBIND11_OVERRIDE(bool, Base, allowTriggerRemap); }
+    { PYBIND11_OVERRIDE(bool, Base, allowTriggerRemap, ); }
 
     QString defaultTrigger() const override
-    { PYBIND11_OVERRIDE(QString, Base, defaultTrigger); }
+    { PYBIND11_OVERRIDE(QString, Base, defaultTrigger, ); }
+
+    void setTrigger(const QString &trigger) override
+    { PYBIND11_OVERRIDE(void, Base, setTrigger, trigger); }
 
     bool supportsFuzzyMatching() const override
-    { PYBIND11_OVERRIDE(bool, Base, supportsFuzzyMatching); }
+    { PYBIND11_OVERRIDE(bool, Base, supportsFuzzyMatching, ); }
 
     void setFuzzyMatching(bool enabled) override
     { PYBIND11_OVERRIDE(void, Base, setFuzzyMatching, enabled); }
