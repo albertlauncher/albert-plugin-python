@@ -240,20 +240,20 @@ class PluginInstance(ABC):
     def extensions(self) -> List[Extension]:
         """
         Returns the extensions of this plugin. You are responsible to keep the extensions alive for
-        the lifetime of this plugin. The base class implementation returns ``self`` if the plugin
+        the lifetime of this plugin. The base class implementation returns **self** if the plugin
         is an instance of ``Extension``, otherwise an empty list.
         """
 
     def readConfig(self, key: str, type: type[str|int|float|bool]) -> str|int|float|bool|None:
         """
-        Returns the config value for ``key`` from the Albert settings or ``None`` if the value does
+        Returns the config value for **key** from the Albert settings or ``None`` if the value does
         notexist or errors occurred. Due to limitations of QSettings on some platforms the type may
-        be lost, therefore the ``type`` has to be passed.
+        be lost, therefore the **type** has to be passed.
         """
 
     def writeConfig(self, key: str, value: str|int|float|bool):
         """
-        Writes ``value`` to ``key`` in the Albert settings.
+        Writes **value** to **key** in the Albert settings.
         """
 
     def configWidget(self) -> List[dict]:
@@ -341,13 +341,13 @@ class Icon(ABC):
 
 def makeImageIcon(path: str | Path) -> Icon:
     """
-    Returns an icon from an image file at _path_.
+    Returns an icon from an image file at **path**.
     """
 
 
 def makeFileTypeIcon(path: str | Path) -> Icon:
     """
-    Returns an icon representing the file type of the file at _path_.
+    Returns an icon representing the file type of the file at **path**.
     """
 
 
@@ -435,13 +435,13 @@ class StandardIconType(Enum):
 
 def makeStandardIcon(type: StandardIconType) -> Icon:
     """
-    Returns a standard icon for the given _type_.
+    Returns a standard icon for the given **type**.
     """
 
 
 def makeThemeIcon(name: str) -> Icon:
     """
-    Returns an icon from the current icon theme with the given _icon_name_.
+    Returns an icon from the current icon theme with the given **name**.
     """
 
 
@@ -465,7 +465,7 @@ def makeGraphemeIcon(grapheme: str,
                      scalar: float | None = None,
                      color: Color | None = None) -> Icon:
     """
-    Returns an icon rendering the given _grapheme_, scaled by _scalar_ and colored with _color_.
+    Returns an icon rendering the given **grapheme**, scaled by **scalar** and colored with **color**.
     """
 
 
@@ -475,9 +475,9 @@ def makeIconifiedIcon(src: Icon,
                       border_width: int | None = None,
                       border_color: Color | None = None) -> Icon:
     """
-    Returns an iconified _src_. i.e. drawn in a colored rounded rectangle with a border.
-    _color_ specifies the background color, _border_width_ the border width in device independent pixels,
-    _border_radius_ the relative border radius (0.0 - 1.0), and _border_color_ the border color.
+    Returns an iconified **src**. i.e. drawn in a colored rounded rectangle with a border.
+    **color** specifies the background color, **border_width** the border width in device independent pixels,
+    **border_radius** the relative border radius (0.0 - 1.0), and **border_color** the border color.
     """
 
 
@@ -491,9 +491,9 @@ def makeComposedIcon(src1: Icon,
                      x2: float | None  = None,
                      y2: float | None  = None) -> Icon:
     """
-    Returns a composed icon of _src1_ and _src2_.
-    _size1_ and _size2_ specify the relative sizes (0.0 - 1.0) of the icons.
-    _x1_, _y1_, _x2_, and _y2_ specify the relative positions (0.0 - 1.0, 0.5 is centered) of the icons.
+    Returns a composed icon of **src1** and **src2**.
+    **size1** and **size2** specify the relative sizes (0.0 - 1.0) of the icons.
+    **x1**, **y1**, **x2**, and **y2** specify the relative positions (0.0 - 1.0, 0.5 is centered) of the icons.
     """
 
 
@@ -527,7 +527,7 @@ class Item(ABC):
         """
 
     @abstractmethod
-    def makeIcon(self) -> Icon:
+    def icon(self) -> Icon:
         """
         Creates and returns an item icon on demand.
         """
@@ -552,6 +552,24 @@ class StandardItem(Item):
                  actions: List[Action] | None = None,
                  input_action_text: str | None = None
                  ):
+        ...
+
+    def id(self) -> str:
+        ...
+
+    def text(self) -> str:
+        ...
+
+    def subtext(self) -> str:
+        ...
+
+    def inputActionText(self) -> str:
+        ...
+
+    def icon(self) -> Icon:
+        ...
+
+    def actions(self) -> List[Action]:
         ...
 
     id: str
@@ -611,15 +629,15 @@ class Query:
     @overload
     def add(self, item: Item):
         """
-        Adds ``item`` to the query results.
+        Adds **item** to the query results.
 
         Use list add if you can to avoid expensive locking and UI flicker.
         """
 
     @overload
-    def add(self, item: List[Item]):
+    def add(self, items: List[Item]):
         """
-        Adds ``items`` to the query results.
+        Adds **items** to the query results.
         """
 
 
@@ -635,8 +653,8 @@ class MatchConfig:
                  ignore_diacritics: bool = True,
                  separator_regex: str = "[\s\\\/\-\[\](){}#!?<>\"'=+*.:,;_]+"):
         """
-        Constructs a ``MatchConfig`` initialized with the values of ``fuzzy``, ``ignore_case``,
-        ``ignore_diacritics``, ``ignore_word_order`` and ``separator_regex``. All parameters are
+        Constructs a ``MatchConfig`` initialized with the values of **fuzzy**, **ignore_case**,
+        **ignore_diacritics*, **ignore_word_order** and **separator_regex**. All parameters are
         optional.
         """
 
@@ -711,25 +729,25 @@ class Matcher:
                  string: str,
                  config: MatchConfig = MatchConfig()):
         """
-        Constructs a ``Matcher`` for the given ``string`` and ``config``.
+        Constructs a ``Matcher`` for the given **string** and **config**.
         """
 
     @overload
     def match(self, string: str) -> Match:
         """
-        Returns a ``Match`` for the ``string``.
+        Returns a ``Match`` for the **string**.
         """
 
     @overload
     def match(self, strings: List[str]) -> Match:
         """
-        Returns the best ``Match`` for the ``strings``.
+        Returns the best ``Match`` for the **strings**.
         """
 
     @overload
     def match(self, *args: str) -> Match:
         """
-        Returns the best ``Match`` for the ``args``.
+        Returns the best ``Match`` for the **args**.
         """
 
 
@@ -764,15 +782,14 @@ class TriggerQueryHandler(Extension):
 
     def synopsis(self, query: str) -> str:
         """
-        Returns the input hint to be displayed on empty query.
-
+        Returns the input hint for the given **query**.
+        The returned string will be displayed in the input line if space permits.
         The base class implementation returns an empty string.
         """
 
     def allowTriggerRemap(self) -> bool:
         """
         Returns ``True`` if the user is allowed to set a custom trigger, otherwise returns ``False``.
-
         The base class implementation returns ``True``.
         """
 
@@ -784,28 +801,26 @@ class TriggerQueryHandler(Extension):
 
     def setTrigger(self, trigger: str):
         """
-        Notifies that the user-defined trigger has changed to *trigger*.
+        Notifies that the user-defined trigger has changed to **trigger**.
         The base class implementation does nothing.
         """
 
     def supportsFuzzyMatching(self) -> bool:
         """
         Returns ``True`` if the handler supports error tolerant matching, otherwise returns ``False``.
-
         The base class implementation returns ``False``.
         """
 
     def setFuzzyMatching(self, enabled: bool):
         """
-        Sets the fuzzy matching mode to ``enabled``.
-
+        Sets the fuzzy matching mode to **enabled**.
         The base class implementation does nothing.
         """
 
     @abstractmethod
     def handleTriggerQuery(self, query: Query):
         """
-        Handles the triggered ``query``.
+        Handles the triggered **query**.
         """
 
 
@@ -829,13 +844,13 @@ class GlobalQueryHandler(TriggerQueryHandler):
         """
         Implements ``TriggerQueryHandler.handleTriggerQuery()``.
 
-        Runs ``GlobalQueryHandler.handleGlobalQuery()``, applies usage scores, sorts and adds items to ``query``.
+        Runs ``GlobalQueryHandler.handleGlobalQuery()``, applies usage scores, sorts and adds items to **query**.
         """
 
     @abstractmethod
     def handleGlobalQuery(self, query: Query) -> List[RankItem]:
         """
-        Returns items that match ``query``.
+        Returns items that match **query**.
         """
 
 
@@ -859,12 +874,12 @@ class IndexQueryHandler(GlobalQueryHandler):
         """
         Implements ``GlobalQueryHandler.handleGlobalQuery()``.
 
-        Returns items that match ``query`` using the index.
+        Returns items that match **query** using the index.
         """
 
-    def setIndexItems(self, indexItems: List[IndexItem]):
+    def setIndexItems(self, index_items: List[IndexItem]):
         """
-        Sets the items of the index.
+        Sets the items of the index to **index_items**.
 
         Meant to be called in ``updateIndexItems()``.
         """
@@ -890,7 +905,7 @@ class FallbackHandler(Extension):
     @abstractmethod
     def fallbacks(self, query: str) -> List[Item]:
         """
-        Returns fallback items for ``query``.
+        Returns fallback items for **query**.
         """
 
 
@@ -957,13 +972,13 @@ def critical(arg: Any):
 
 def setClipboardText(text: str):
     """
-    Sets the system clipboard to ``text``.
+    Sets the system clipboard to **text**.
     """
 
 
 def setClipboardTextAndPaste(text: str):
     """
-    Sets the system clipboard to ``text`` and paste the content to the front-most window.
+    Sets the system clipboard to **text** and paste the content to the front-most window.
 
     Note:
         Requires paste support. Check ``havePasteSupport()`` before using this function.
@@ -981,25 +996,25 @@ def havePasteSupport() -> bool:
 
 def openUrl(url: str):
     """
-    Opens the URL ``url`` with the default URL handler.
+    Opens the URL **url** with the default URL handler.
     """
 
 
 def openFile(path: str):
     """
-    Opens the file at ``path`` with the default application.
+    Opens the file at **path** with the default application.
     """
 
 
 def runDetachedProcess(cmdln: List[str], workdir: str = '') -> int:
     """
-    Starts the ``commandline`` in a new process, and detaches from it. Returns the PID on success;
-    otherwise returns 0. The process will be started in the directory ``working_dir``. If
-    ``working_dir`` is empty, the working directory is the users home directory.
+    Starts the **cmdln** in a new process, and detaches from it. Returns the PID on success;
+    otherwise returns 0. The process will be started in the directory **workdir**. If
+    **workdir** is empty, the working directory is the users home directory.
     """
 
 
 def runTerminal(script: str):
     """
-    Runs a ``script`` in the users shell and terminal.
+    Runs a **script** in the users shell and terminal.
     """
