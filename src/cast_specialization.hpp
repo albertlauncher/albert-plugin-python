@@ -36,11 +36,11 @@ public:
 };
 
 
-//  List[str] <-> QStringList
+//  list[str] <-> QStringList
 
 template <>
 struct type_caster<QStringList> {
-PYBIND11_TYPE_CASTER(QStringList, _("List[str]"));
+PYBIND11_TYPE_CASTER(QStringList, _("list[str]"));
 private:
     using list_caster_t = make_caster<std::list<QString>>;
     list_caster_t list_caster;
