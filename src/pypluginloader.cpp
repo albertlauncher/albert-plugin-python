@@ -24,7 +24,6 @@ using namespace std;
 
 static const auto ATTR_PLUGIN_CLASS   = "Plugin";
 static const auto ATTR_MD_IID         = "md_iid";
-static const auto ATTR_MD_ID          = "md_id";
 static const auto ATTR_MD_LICENSE     = "md_license";
 static const auto ATTR_MD_VERSION     = "md_version";
 static const auto ATTR_MD_NAME        = "md_name";
@@ -38,6 +37,95 @@ static const auto ATTR_MD_LIB_DEPS    = "md_lib_dependencies";
 static const auto ATTR_MD_CREDITS     = "md_credits";
 static const auto ATTR_MD_PLATFORMS   = "md_platforms";
 //static const char *ATTR_MD_MINPY     = "md_min_python";
+
+static QString extractAstString(const py::handle &ast_assign_node)
+{
+    // if (py::isinstance(ast_value, ast.attr("Constant"))
+    return ast_assign_node.attr("value").attr("value").cast<QString>();
+}
+
+static QStringList extractAstStringList(const py::handle &ast_assign_node)
+{
+    QStringList list;
+    for (const py::handle item : ast_assign_node.attr("value").attr("elts").cast<py::list>())
+        // if (py::isinstance(item, ast.attr("Constant")))
+        list << item.attr("value").cast<py::str>().cast<QString>();
+    return list;
+}
+
+static PluginMetadata extractMetadata(const QString &path)
+{
+    PluginMetadata metadata;
+
+    QString source_code;
+
+    if(QFile file(path); file.open(QIODevice::ReadOnly))
+        source_code = QTextStream(&file).readAll();
+    else
+        throw runtime_error(format("Can't open source file: {}", file.fileName().toStdString()));
+
+            //Parse the source code using ast and get all FunctionDef and Assign ast nodes
+    py::gil_scoped_acquire acquire;
+    py::module ast = py::module::import("ast");
+    py::object ast_root = ast.attr("parse")(source_code.toStdString());
+
+    map<QString, py::object> ast_assignments;
+
+    for (auto node : ast_root.attr("body"))
+    {
+        if (py::isinstance(node, ast.attr("Assign")))
+        {
+            for (py::handle target : node.attr("targets"))
+            {
+                if (py::isinstance(target, ast.attr("Name")))
+                {
+                    if (auto target_name = target.attr("id").cast<string>();
+                        target_name == ATTR_MD_IID)
+                        metadata.iid = extractAstString(node);
+
+                    else if (target_name == ATTR_MD_NAME)
+                        metadata.name = extractAstString(node);
+
+                    else if (target_name == ATTR_MD_VERSION)
+                        metadata.version = extractAstString(node);
+
+                    else if (target_name == ATTR_MD_DESCRIPTION)
+                        metadata.description = extractAstString(node);
+
+                    else if (target_name == ATTR_MD_LICENSE)
+                        metadata.license = extractAstString(node);
+
+                    else if (target_name == ATTR_MD_URL)
+                        metadata.url = extractAstString(node);
+
+                    else if (target_name == ATTR_MD_README_URL)
+                        metadata.readme_url = extractAstString(node);
+
+                    else if (target_name == ATTR_MD_AUTHORS)
+                        metadata.authors = extractAstStringList(node);
+
+                    else if (target_name == ATTR_MD_MAINTAINERS)
+                        metadata.maintainers = extractAstStringList(node);
+
+                    else if (target_name == ATTR_MD_LIB_DEPS)
+                        metadata.runtime_dependencies = extractAstStringList(node);
+
+                    else if (target_name == ATTR_MD_BIN_DEPS)
+                        metadata.binary_dependencies = extractAstStringList(node);
+
+                    else if (target_name == ATTR_MD_CREDITS)
+                        metadata.third_party_credits = extractAstStringList(node);
+
+                    else if (target_name == ATTR_MD_PLATFORMS)
+                        metadata.platforms = extractAstStringList(node);
+
+                }
+            }
+        }
+    }
+
+    return metadata;
+}
 
 PyPluginLoader::PyPluginLoader(const Plugin &plugin, const QString &module_path) :
     plugin_(plugin),
@@ -62,113 +150,10 @@ PyPluginLoader::PyPluginLoader(const Plugin &plugin, const QString &module_path)
     // Extract metadata
     //
 
-    metadata_.id = file_info.completeBaseName();
+    metadata_ = extractMetadata(source_path_);
+    metadata_.id = u"python."_s + file_info.completeBaseName();  // Namespace id
     metadata_.load_type = PluginMetadata::LoadType::User;
 
-    QString source;
-
-    if(QFile file(source_path_); file.open(QIODevice::ReadOnly))
-        source = QTextStream(&file).readAll();
-    else
-        throw runtime_error(format("Can't open source file: {}", file.fileName().toStdString()));
-
-    //Parse the source code using ast and get all FunctionDef and Assign ast nodes
-    py::gil_scoped_acquire acquire;
-    py::module ast = py::module::import("ast");
-    py::object ast_root = ast.attr("parse")(source.toStdString());
-
-    map<QString, py::object> ast_assignments;
-
-    for (auto node : ast_root.attr("body")){
-        if (py::isinstance(node, ast.attr("Assign"))){
-            auto py_value = node.attr("value");
-            for (py::handle target : node.attr("targets")){
-                if (py::isinstance(target, ast.attr("Name"))){
-                    auto target_name = target.attr("id").cast<string>();
-
-                    if (py::isinstance(py_value, ast.attr("Str"))){
-                        const auto value = py_value.attr("value").cast<QString>();
-
-                        if (target_name == ATTR_MD_IID)
-                            metadata_.iid = value;
-
-                        else if (target_name == ATTR_MD_ID)
-                        {
-                            WARN << metadata_.id
-                                 << ": Using 'md_id' to overwrite the plugin id is deprecated and "
-                                    "will be dropped without replacement in interface v3.0. Plugin "
-                                    "ids will be 'python.<modulename>' to avoid conflicts with "
-                                    "native plugins.";
-                            metadata_.id = value;
-                        }
-
-                        else if (target_name == ATTR_MD_NAME)
-                            metadata_.name = value;
-
-                        else if (target_name == ATTR_MD_VERSION)
-                            metadata_.version = value;
-
-                        else if (target_name == ATTR_MD_DESCRIPTION)
-                            metadata_.description = value;
-
-                        else if (target_name == ATTR_MD_LICENSE)
-                            metadata_.license = value;
-
-                        else if (target_name == ATTR_MD_URL)
-                            metadata_.url = value;
-
-                        else if (target_name == ATTR_MD_README_URL)
-                            metadata_.readme_url = value;
-
-
-                        // >>> Remove these somewhen in future
-
-                        else if (target_name == ATTR_MD_AUTHORS)
-                            metadata_.authors = {value};
-
-                        else if (target_name == ATTR_MD_MAINTAINERS)
-                            metadata_.maintainers = {value};
-
-                        else if (target_name == ATTR_MD_LIB_DEPS)
-                            metadata_.runtime_dependencies = {value};
-
-                        else if (target_name == ATTR_MD_BIN_DEPS)
-                            metadata_.binary_dependencies = {value};
-
-                        else if (target_name == ATTR_MD_CREDITS)
-                            metadata_.third_party_credits = {value};
-
-                        // <<<
-                    }
-
-                    if (py::isinstance(py_value, ast.attr("List"))){
-                        QStringList list;
-                        for (const py::handle item : py_value.attr("elts").cast<py::list>())
-                            if (py::isinstance(item, ast.attr("Str")))
-                                list << item.attr("s").cast<py::str>().cast<QString>();
-
-                        if (target_name == ATTR_MD_AUTHORS)
-                            metadata_.authors = list;
-
-                        else if (target_name == ATTR_MD_MAINTAINERS)
-                            metadata_.maintainers = list;
-
-                        else if (target_name == ATTR_MD_LIB_DEPS)
-                            metadata_.runtime_dependencies = list;
-
-                        else if (target_name == ATTR_MD_BIN_DEPS)
-                            metadata_.binary_dependencies = list;
-
-                        else if (target_name == ATTR_MD_CREDITS)
-                            metadata_.third_party_credits = list;
-
-                        else if (target_name == ATTR_MD_PLATFORMS)
-                            metadata_.platforms = list;
-                    }
-                }
-            }
-        }
-    }
 
     //
     // Check interface
@@ -176,9 +161,6 @@ PyPluginLoader::PyPluginLoader(const Plugin &plugin, const QString &module_path)
 
     if (metadata_.iid.isEmpty())
         throw NoPluginException("No interface id found");
-
-    // Namespace id
-    metadata_.id = u"python."_s + metadata_.id;
 
     QStringList errors;
     static const QRegularExpression regex_version(uR"R(^(\d+)\.(\d+)$)R"_s);
