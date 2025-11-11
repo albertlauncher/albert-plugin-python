@@ -25,6 +25,9 @@
 [submodule "plugins/emoji"]
 	path = plugins/emoji
 	url = https://github.com/albertlauncher/albert-plugin-python-emoji
+[submodule "plugins/firefox"]
+	path = plugins/firefox
+	url = https://github.com/albertlauncher/albert-plugin-python-firefox
 [submodule "plugins/goldendict"]
 	path = plugins/goldendict
 	url = https://github.com/albertlauncher/albert-plugin-python-goldendict
