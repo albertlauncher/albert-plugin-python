@@ -10,7 +10,7 @@
 #include <memory>
 class PyPluginLoader;
 
-class Plugin : public albert::util::ExtensionPlugin,
+class Plugin : public albert::ExtensionPlugin,
                public albert::PluginProvider
 {
     ALBERT_PLUGIN
@@ -41,7 +41,7 @@ private:
 
     std::vector<std::unique_ptr<PyPluginLoader>> scanPlugins() const;
 
-    albert::util::StrongDependency<applications::Plugin> apps{QStringLiteral("applications")};
+    albert::StrongDependency<applications::Plugin> apps{QStringLiteral("applications")};
     std::vector<std::unique_ptr<PyPluginLoader>> plugins_;
     std::unique_ptr<pybind11::gil_scoped_release> release_;
 

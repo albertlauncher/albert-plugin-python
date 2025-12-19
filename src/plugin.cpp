@@ -26,7 +26,6 @@
 #include <chrono>
 ALBERT_LOGGING_CATEGORY("python")
 using namespace Qt::StringLiterals;
-using namespace albert::util;
 using namespace albert;
 using namespace chrono;
 using namespace std;
@@ -94,7 +93,7 @@ Plugin::Plugin()
                                        .arg(PYBIND11_VERSION_MINOR)
                                        .arg(PYBIND11_VERSION_PATCH);
 
-    tryCreateDirectory(dataLocation() / PLUGINS);
+    filesystem::create_directories(dataLocation() / PLUGINS);
 
     updateStubFile();
 
@@ -273,7 +272,7 @@ QWidget *Plugin::buildConfigWidget()
         if (question(tr("Resetting the virtual environment requires a restart. Restart now?")))
         {
             QFile::moveToTrash(venvPath());
-            restart();
+            App::restart();
         }
     });
 
