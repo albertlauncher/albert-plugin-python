@@ -12,18 +12,19 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QSettings>
+#include <QCoroGenerator>
 #include <QString>
 #include <QWidget>
 #include <albert/extensionregistry.h>
 #include <albert/fallbackhandler.h>
-#include <albert/iconutil.h>
+#include <albert/icon.h>
 #include <albert/indexqueryhandler.h>
+#include <albert/generatorqueryhandler.h>
 #include <albert/logging.h>
 #include <albert/plugininstance.h>
 #include <albert/pluginloader.h>
 #include <albert/pluginmetadata.h>
 using namespace Qt::StringLiterals;
-using namespace albert::util;
 using namespace albert;
 using namespace std;
 
@@ -303,7 +304,7 @@ public:
 
 
 template <class Base = Extension>
-class PyE : public Base
+class PyExtension : public Base
 {
 public:
     WORKAROUND_PYBIND_5405(id)
@@ -311,8 +312,28 @@ public:
     WORKAROUND_PYBIND_5405(description)
 };
 
-template <class Base = TriggerQueryHandler>
-class PyTQH : public PyE<Base>
+
+// class PyQueryExecution : public QueryExecution, public py::trampoline_self_life_support
+// {
+// public:
+//     using QueryExecution::QueryExecution;
+
+//     void cancel() override
+//     { PYBIND11_OVERRIDE_PURE(void, QueryExecution, cancel, ); }
+
+//     void fetchMore() override
+//     { PYBIND11_OVERRIDE_PURE(void, QueryExecution, fetchMore, ); }
+
+//     bool canFetchMore() const override
+//     { PYBIND11_OVERRIDE_PURE(bool, QueryExecution, canFetchMore, ); }
+
+//     bool isActive() const override
+//     { PYBIND11_OVERRIDE_PURE(bool, QueryExecution, isActive, ); }
+// };
+
+
+template <class Base = QueryHandler>
+class PyQueryHandler : public PyExtension<Base>
 {
 public:
     QString synopsis(const QString &query) const override
@@ -333,66 +354,172 @@ public:
     void setFuzzyMatching(bool enabled) override
     { PYBIND11_OVERRIDE(void, Base, setFuzzyMatching, enabled); }
 
-    // No type mismatch workaround required since base class is not called.
-    void handleTriggerQuery(albert::Query &query) override
+    // unique_ptr<QueryExecution> execution(QueryContext &context) override
+    // { PYBIND11_OVERRIDE_PURE(unique_ptr<QueryExecution>, Base, execution, &context); }
+};
+
+
+// This class makes sure that the GIL is locked when the coroutine frame is unwound
+class ItemGeneratorWrapper
+{
+    py::function fn_next;
+
+public:
+    ItemGeneratorWrapper(py::function override, QueryContext &ctx)
     {
-        albert::Query * query_ptr = &query;
-        PYBIND11_OVERRIDE_PURE(void, Base, handleTriggerQuery, query_ptr);
+        py::gil_scoped_acquire acquire;
+
+        // Make sure to release the function object, before releasing the GIL
+        py::function fn_items = ::move(override);
+
+        auto gen = fn_items(&ctx); // may throw
+
+        if (!gen)
+            py::pybind11_fail("Failed creating generator from \"items\" override.");
+
+        if (!py::hasattr(gen, "__next__"))
+            py::pybind11_fail("Generator object has no attr \"__next__\".");
+
+        fn_next = gen.attr("__next__");
+    }
+
+    ~ItemGeneratorWrapper()
+    {
+        py::gil_scoped_acquire acquire;
+        fn_next = {};
+    }
+
+    optional<vector<shared_ptr<Item>>> next()
+    {
+        py::gil_scoped_acquire acquire;
+        try {
+            return fn_next().cast<vector<shared_ptr<Item>>>();
+        } catch (const py::error_already_set &e) {
+            if (e.matches(PyExc_StopIteration))
+                return nullopt;  // Expected end
+            else
+                throw;
+        } catch (const exception &e) {
+            CRIT << e.what();
+            throw;
+        } catch (...) {
+            throw;
+        }
+        return nullopt;
+    }
+
+    static ItemGenerator generator(py::function fn_items, QueryContext &ctx)
+    {
+        ItemGeneratorWrapper generator(::move(fn_items), ctx);
+        while (auto next = generator.next())
+            co_yield ::move(*next);
+    }
+};
+
+template<typename T>
+py::function getOverrideLocked(const T *this_ptr, const char *name)
+{
+    py::gil_scoped_acquire acquire;
+    return py::get_override(this_ptr, name);
+}
+
+template <class Base = GeneratorQueryHandler>
+class PyGeneratorQueryHandler : public PyQueryHandler<Base>
+{
+protected:
+
+public:
+    // No type mismatch workaround required since base class is not called.
+    ItemGenerator items(QueryContext &context) override
+    {
+        auto fn_items_override = getOverrideLocked(this, "items");
+        if (fn_items_override)
+            // ! This move releases the py object, such that GIL is not required on destruction
+            return ItemGeneratorWrapper::generator(::move(fn_items_override), context);
+        else
+            pybind11::pybind11_fail("Pure virtual function \"items\"");
+    }
+
+    // //
+    // // This is required due to the "final" quirks of the pybind trampoline chain
+    // //
+    // // QueryHandler            | declares pure
+    // // GeneratorQueryHandler   | overrides "final"
+    // // PyQueryHandler          | overrides "pure" on python side
+    // // PyGeneratorQueryHandler | calls will throw "call to pure" error
+    // //
+    // unique_ptr<QueryExecution> execution(QueryContext &context) override
+    // {
+    //     // PyBind does not suport passing reference, but instead tries to copy.
+    //     // Workaround by converting to pointer.
+    //     // This is needed because PYBIND11_OVERRIDE_PURE would introduce type mismatch.
+    //     PYBIND11_OVERRIDE_IMPL(unique_ptr<QueryExecution>, Base, "execution", &context);  // returns on success
+    //     return Base::execution(context);  // otherwise call base class
+    // }
+};
+
+template <class Base = RankedQueryHandler>
+class PyRankedQueryHandler : public PyGeneratorQueryHandler<Base>
+{
+public:
+    // No type mismatch workaround required since base class is not called.
+    vector<RankItem> rankItems(QueryContext &context) override
+    { PYBIND11_OVERRIDE_PURE(vector<RankItem>, Base, rankItems, &context); }
+
+    //
+    // This is required due to the "final" quirks of the pybind trampoline chain
+    //
+    // GeneratorQueryHandler   | declares pure
+    // RankedQueryHandler      | overrides "final"
+    // PyGeneratorQueryHandler | overrides "pure" on python side
+    // PyRankedQueryHandler    | calls will throw "call to pure" error
+    //
+    ItemGenerator items(QueryContext &context) override
+    {
+        auto fn_items_override = getOverrideLocked(this, "items");
+        if (fn_items_override)
+            // ! This move releases the py object, such that GIL is not required on destruction
+            return ItemGeneratorWrapper::generator(::move(fn_items_override), context);
+        else
+            return Base::items(context);
     }
 };
 
 
 template <class Base = GlobalQueryHandler>
-class PyGQH : public PyTQH<Base>
+class PyGlobalQueryHandler : public PyRankedQueryHandler<Base>
 {
-public:
-    // This is required due to the "final" quirks of the pybind trampoline chain
-    // E < TQH < GQH < PyE < PyTQH < PyGQH
-    //           ^(1)        ^(2)    ^(3)
-    // (1) overrides handleTriggerQuery "final"
-    // (2) overrides "pure" on python side
-    // (3) has to override non-pure otherwise calls will throw "call to pure" error
-    void handleTriggerQuery(albert::Query &query) override
-    {
-        // PyBind does not suport passing reference, but instead tries to copy. Workaround
-        // converting to pointer. Needed because PYBIND11_OVERRIDE_PURE introduces type mismatch.
-        albert::Query * query_ptr = &query;
-        PYBIND11_OVERRIDE_IMPL(void, Base, "handleTriggerQuery", query_ptr);  // returns on success
-        return Base::handleTriggerQuery(query);  // otherwise call base class
-    }
-
-    // No type mismatch workaround required since base class is not called.
-    vector<RankItem> handleGlobalQuery(const albert::Query &query) override
-    { PYBIND11_OVERRIDE_PURE(vector<RankItem>, Base, handleGlobalQuery, &query); }
 };
 
 
 template <class Base = IndexQueryHandler>
-class PyIQH : public PyGQH<Base>
+class PyIndexQueryHandler : public PyGlobalQueryHandler<Base>
 {
 public:
-    // This is required due to the "final" quirks of the pybind trampoline chain
-    // E < TQH < GQH < IQH < PyE < PyTQH < PyGQH < PyIQH
-    //                 ^(1)                ^(2)    ^(3)
-    // (1) overrides handleGlobalQuery "final"
-    // (2) overrides "pure" on python side
-    // (3) has to override non-pure otherwise calls will throw "call to pure" error
-    vector<RankItem> handleGlobalQuery(const albert::Query &query) override
-    {
-        // PyBind does not suport passing reference, but instead tries to copy. Workaround
-        // converting to pointer. Needed because PYBIND11_OVERRIDE_PURE introduces type mismatch.
-        const albert::Query * query_ptr = &query;
-        PYBIND11_OVERRIDE_IMPL(vector<RankItem>, Base, "handleGlobalQuery", query_ptr);  // returns on success
-        return Base::handleGlobalQuery(query);  // otherwise call base class
-    }
-
     void updateIndexItems() override
     { PYBIND11_OVERRIDE_PURE(void, Base, updateIndexItems); }
+
+    //
+    // This is required due to the "final" quirks of the pybind trampoline chain
+    //
+    // RankedQueryHandler   | declares pure
+    // IndexQueryHandler    | overrides "final"
+    // PyRankedQueryHandler | overrides "pure" on python side
+    // PyIndexQueryHandler  | calls will throw "call to pure" error
+    //
+    vector<RankItem> rankItems(QueryContext &context) override
+    {
+        // PyBind does not suport passing reference, but instead tries to copy.
+        // Workaround by converting to pointer.
+        // This is needed because PYBIND11_OVERRIDE_PURE would introduce type mismatch.
+        PYBIND11_OVERRIDE_IMPL(vector<RankItem>, Base, "rankItems", &context);  // returns on success
+        return Base::rankItems(context);  // otherwise call base class
+    }
 };
 
 
 template <class Base = FallbackHandler>
-class PyFQH : public PyE<Base>
+class PyFallbackHandler : public PyExtension<Base>
 {
 public:
     vector<shared_ptr<Item>> fallbacks(const QString &query) const override

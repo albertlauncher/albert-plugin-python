@@ -10,19 +10,20 @@
 #include "trampolineclasses.hpp"
 
 #include <QDir>
+#include <albert/app.h>
+#include <albert/icon.h>
 #include <albert/indexqueryhandler.h>
 #include <albert/logging.h>
 #include <albert/matcher.h>
 #include <albert/notification.h>
 #include <albert/plugin/applications.h>
-#include <albert/iconutil.h>
 #include <albert/plugininstance.h>
 #include <albert/standarditem.h>
 #include <albert/systemutil.h>
+#include <albert/usagescoring.h>
+extern applications::Plugin *apps;
 using namespace albert;
 using namespace std;
-using namespace util;
-extern applications::Plugin *apps;
 
 
 /*
@@ -72,6 +73,34 @@ struct TrampolineDeleter
     }
 };
 
+// This type is required to make C++ generators usable in Python
+class PyItemGeneratorWrapper
+{
+    ItemGenerator gen;
+    optional<ItemGenerator::iterator> it;
+
+public:
+    explicit PyItemGeneratorWrapper(ItemGenerator g)
+        : gen(std::move(g)) {}
+
+    PyItemGeneratorWrapper &iter() { return *this; }
+
+    std::vector<std::shared_ptr<albert::Item>> next()
+    {
+        if (it)
+            if (it == gen.end())
+                throw pybind11::stop_iteration();
+            else
+                ++(*it);
+        else
+            it = gen.begin();
+
+        if (it == gen.end())
+            throw pybind11::stop_iteration();
+
+        return ::move(**it);
+    }
+};
 
 PYBIND11_EMBEDDED_MODULE(albert, m)
 {
@@ -189,46 +218,22 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     // ------------------------------------------------------------------------
 
-    py::class_<Query, unique_ptr<Query, py::nodelete>>(m, "Query")
-
-        .def_property_readonly("trigger",
-                               &Query::trigger)
-
-
-        .def_property_readonly("string",
-                               &Query::string)
-
-
-        .def_property_readonly("isValid",
-                               &Query::isValid)
-
-        .def("add",
-             py::overload_cast<const shared_ptr<Item> &>(&Query::add))
-
-        .def("add",
-             py::overload_cast<const vector<shared_ptr<Item>> &>(&Query::add))
-        ;
-
-    // ------------------------------------------------------------------------
-
     py::class_<MatchConfig>(m, "MatchConfig")
 
         .def(py::init<>())
 
-        .def(py::init([](bool f, bool c, bool o, bool d, const QString &r) {
+        .def(py::init([](bool f, bool c, bool o, bool d) {
                  return MatchConfig{
                      .fuzzy=f,
                      .ignore_case=c,
                      .ignore_word_order=o,
-                     .ignore_diacritics=d,
-                     .separator_regex=r.isEmpty() ? default_separator_regex : QRegularExpression(r)
+                     .ignore_diacritics=d
                  };
              }),
             py::arg("fuzzy") = false,
             py::arg("ignore_case") = true,
             py::arg("ignore_word_order") = true,
-            py::arg("ignore_diacritics") = true,
-            py::arg("separator_regex") = QString())
+            py::arg("ignore_diacritics") = true)
 
         .def_readwrite("fuzzy",
                        &MatchConfig::fuzzy)
@@ -242,9 +247,6 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         .def_readwrite("ignore_diacritics",
                        &MatchConfig::ignore_diacritics)
 
-        .def_property("separator_regex",
-                      [](const MatchConfig &self){ return self.separator_regex.pattern(); },
-                      [](MatchConfig &self, const QString &pattern){ self.separator_regex.setPattern(pattern); })
         ;
 
     py::class_<Matcher>(m, "Matcher")
@@ -286,7 +288,8 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     // ------------------------------------------------------------------------
 
-    py::class_<Extension, PyE<>,
+    py::class_<Extension,
+               PyExtension<>,
                unique_ptr<Extension, py::nodelete>
                >(m, "Extension")
 
@@ -302,36 +305,131 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     // ------------------------------------------------------------------------
 
-    py::class_<TriggerQueryHandler, Extension, PyTQH<>,
-               unique_ptr<TriggerQueryHandler, TrampolineDeleter<TriggerQueryHandler, PyTQH<>>>
-               >(m, "TriggerQueryHandler")
+    py::classh<UsageScoring>(m, "UsageScoring")
+        .def("modifyMatchScores",
+             &UsageScoring::modifyMatchScores,
+             py::arg("extension_id"),
+             py::arg("rank_items"))
+        ;
+
+    py::class_<QueryContext,
+               unique_ptr<QueryContext, py::nodelete>
+               >(m, "QueryContext")
+
+        .def_property_readonly("trigger",
+                               &QueryContext::trigger)
+
+        .def_property_readonly("query",
+                               &QueryContext::query)
+
+        .def_property_readonly("isValid",
+                               &QueryContext::isValid)
+
+        .def_property_readonly("usageScoring",
+                               &QueryContext::usageScoring)
+        ;
+
+    // py::class_<QueryResults>(m, "QueryResults")
+
+    //     .def("add",
+    //          [](QueryResults &self, const shared_ptr<Item> &item){ self.add(item); })
+
+    //     .def("add",
+    //          [](QueryResults &self, const vector<shared_ptr<Item>> &items){ self.add(items); })
+    //     ;
+
+    // py::classh<QueryExecution,
+    //            PyQueryExecution
+    //            >(m, "QueryExecution")
+
+    //     .def(py::init<albert::QueryContext &>(),
+    //          py::arg("context"))
+
+    //     .def_readonly("id",
+    //                   &QueryExecution::id)
+
+    //     .def_property_readonly("context",
+    //                            [](const QueryExecution &self){ return &self.context; },
+    //                            py::return_value_policy::reference)
+
+    //     .def_property_readonly("results",
+    //                            [](const QueryExecution &self){ return &self.results; },
+    //                            py::return_value_policy::reference)
+
+    //     // .def("cancel",
+    //     //      &QueryExecution::cancel)
+
+    //     // .def("fetchMore",
+    //     //      &QueryExecution::fetchMore)
+
+    //     // .def("canFetchMore",
+    //     //      &QueryExecution::canFetchMore)
+
+    //     // .def("isActive",
+    //     //      &QueryExecution::isActive)
+
+    //     ;
+
+    py::class_<QueryHandler,
+               Extension,
+               PyQueryHandler<>,
+               unique_ptr<QueryHandler,
+                          TrampolineDeleter<QueryHandler,
+                                            PyQueryHandler<>>>
+               >(m, "QueryHandler")
+
+        // .def(py::init<>())
+
+        .def("synopsis",
+             &QueryHandler::synopsis)
+
+        .def("allowTriggerRemap",
+             &QueryHandler::allowTriggerRemap)
+
+        .def("defaultTrigger",
+             &QueryHandler::defaultTrigger)
+
+        // .def("setTrigger",
+        //      &QueryHandler::setTrigger)
+
+        .def("supportsFuzzyMatching",
+             &QueryHandler::supportsFuzzyMatching)
+
+        // .def("setFuzzyMatching",
+        //      &QueryHandler::setFuzzyMatching)
+
+        // // PURE VIRTUAL
+        // .def("execution",
+        //      &QueryHandler::execution,
+        //      py::arg("context"))
+        ;
+
+    // ------------------------------------------------------------------------
+
+
+    py::classh<PyItemGeneratorWrapper>(m, "ItemGenerator")
+
+        .def("__iter__", &PyItemGeneratorWrapper::iter,
+             py::return_value_policy::reference_internal)
+
+        .def("__next__", &PyItemGeneratorWrapper::next);
+
+        ;
+
+    py::class_<GeneratorQueryHandler,
+               QueryHandler,
+               PyGeneratorQueryHandler<>,
+               unique_ptr<GeneratorQueryHandler,
+                          TrampolineDeleter<GeneratorQueryHandler,
+                                            PyGeneratorQueryHandler<>>>
+               >(m, "GeneratorQueryHandler")
 
         .def(py::init<>())
 
-        .def("synopsis",
-             &TriggerQueryHandler::synopsis)
-
-        .def("allowTriggerRemap",
-             &TriggerQueryHandler::allowTriggerRemap)
-
-        .def("defaultTrigger",
-             &TriggerQueryHandler::defaultTrigger)
-
-        .def("setTrigger",
-             &TriggerQueryHandler::setTrigger)
-
-        .def("supportsFuzzyMatching",
-             &TriggerQueryHandler::supportsFuzzyMatching)
-
-        .def("setFuzzyMatching",
-             &TriggerQueryHandler::setFuzzyMatching)
-
-        // TODO: .def("usageScoreApplied", &TriggerQueryHandler::applyUsageScore)
-
         // PURE VIRTUAL
-        .def("handleTriggerQuery",
-             &TriggerQueryHandler::handleTriggerQuery,
-             py::arg("query"))
+        .def("items",
+             &GeneratorQueryHandler::items,
+             py::arg("context"))
         ;
 
     // ------------------------------------------------------------------------
@@ -343,21 +441,48 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
              py::arg("score"))
         ;
 
-    py::class_<GlobalQueryHandler, TriggerQueryHandler, PyGQH<>,
-               unique_ptr<GlobalQueryHandler, TrampolineDeleter<GlobalQueryHandler, PyGQH<>>>
+    py::class_<RankedQueryHandler,
+               GeneratorQueryHandler,
+               PyRankedQueryHandler<>,
+               unique_ptr<RankedQueryHandler,
+                          TrampolineDeleter<RankedQueryHandler,
+                                            PyRankedQueryHandler<>>>
+               >(m, "RankedQueryHandler")
+
+        .def(py::init<>())
+
+        // BASE IMPLEMENTATION
+        .def("items",
+             [](RankedQueryHandler &self, QueryContext *ctx) {
+                 return PyItemGeneratorWrapper(self.items(*ctx));
+             },
+             py::arg("context"))
+
+        // PURE VIRTUAL
+        .def("rankItems",
+             &RankedQueryHandler::rankItems,
+             py::arg("context"))
+
+        .def_static("lazySort",
+                    [](vector<RankItem> rank_items) {
+                        return PyItemGeneratorWrapper(RankedQueryHandler::lazySort(::move(rank_items)));
+                    },
+                    py::arg("rank_items"))
+
+        ;
+
+    // ------------------------------------------------------------------------
+
+    py::class_<GlobalQueryHandler,
+               RankedQueryHandler,
+               PyGlobalQueryHandler<>,
+               unique_ptr<GlobalQueryHandler,
+                          TrampolineDeleter<GlobalQueryHandler,
+                                            PyGlobalQueryHandler<>>>
                >(m, "GlobalQueryHandler")
 
         .def(py::init<>())
 
-        // DEFAULT IMPLEMENTATION
-        .def("handleTriggerQuery",
-             &GlobalQueryHandler::handleTriggerQuery,
-             py::arg("query"))
-
-        // PURE VIRTUAL
-        .def("handleGlobalQuery",
-             &GlobalQueryHandler::handleGlobalQuery,
-             py::arg("query"))
         ;
 
     // ------------------------------------------------------------------------
@@ -369,8 +494,12 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
              py::arg("string"))
         ;
 
-    py::class_<IndexQueryHandler, GlobalQueryHandler, PyIQH<>,
-               unique_ptr<IndexQueryHandler, TrampolineDeleter<IndexQueryHandler, PyIQH<>>>
+    py::class_<IndexQueryHandler,
+               GlobalQueryHandler,
+               PyIndexQueryHandler<>,
+               unique_ptr<IndexQueryHandler,
+                          TrampolineDeleter<IndexQueryHandler,
+                                            PyIndexQueryHandler<>>>
                >(m, "IndexQueryHandler")
 
         .def(py::init<>())
@@ -382,9 +511,9 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
              &IndexQueryHandler::setFuzzyMatching)
 
          // DEFAULT IMPLEMENTATION
-        .def("handleGlobalQuery",
-             &IndexQueryHandler::handleGlobalQuery,
-             py::arg("query"))
+        .def("rankItems",
+             &IndexQueryHandler::rankItems,
+             py::arg("context"))
 
         // PURE VIRTUAL
         .def("updateIndexItems",
@@ -397,15 +526,19 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     //------------------------------------------------------------------------
 
-    py::class_<FallbackHandler, Extension, PyFQH<>,
-               unique_ptr<FallbackHandler, TrampolineDeleter<FallbackHandler, PyFQH<>>>
+    py::class_<FallbackHandler,
+               Extension,
+               PyFallbackHandler<>,
+               unique_ptr<FallbackHandler,
+                          TrampolineDeleter<FallbackHandler,
+                                            PyFallbackHandler<>>>
                >(m, "FallbackHandler")
 
         .def(py::init<>())
 
         .def("fallbacks",
              &FallbackHandler::fallbacks,
-             py::arg("query"))
+             py::arg("query_string"))
         ;
 
     // ------------------------------------------------------------------------
@@ -432,10 +565,6 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         ;
 
     // ------------------------------------------------------------------------
-
-    py::classh<Icon>(m, "Icon")
-        .def("__str__", &Icon::toUrl)
-        ;
 
     py::class_<QBrush>(m, "Brush")
         .def(py::init<QColor>(),
@@ -468,17 +597,27 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
         ;
 
-    // Exposes (path: os.PathLike | str | bytes) -> albert.Icon
-    m.def("makeImageIcon",
-          py::overload_cast<const filesystem::path&>(&makeImageIcon),
-          py::arg("path"));
+    py::classh<Icon> Icon(m, "Icon");
+
+    Icon.def("__str__", &Icon::toUrl)
+        ;
 
     // Exposes (path: os.PathLike | str | bytes) -> albert.Icon
-    m.def("makeFileTypeIcon",
-          py::overload_cast<const filesystem::path&>(&makeFileTypeIcon),
-          py::arg("path"));
+    Icon.def_static("image",
+                    py::overload_cast<const filesystem::path &>(&Icon::image),
+                    py::arg("path"));
 
-    py::native_enum<StandardIconType>(m, "StandardIconType", "enum.IntEnum")
+    // Exposes (path: os.PathLike | str | bytes) -> albert.Icon
+    Icon.def_static("fileType",
+                    py::overload_cast<const filesystem::path &>(&Icon::fileType),
+                    py::arg("path"));
+
+    Icon.def_static("theme",
+                    &Icon::theme,
+                    py::arg("name"));
+
+    using enum Icon::StandardIconType;
+    py::native_enum<Icon::StandardIconType>(Icon, "StandardIconType", "enum.IntEnum")
         .value("TitleBarMenuButton", TitleBarMenuButton)
         .value("TitleBarMinButton", TitleBarMinButton)
         .value("TitleBarMaxButton", TitleBarMaxButton)
@@ -562,38 +701,34 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         .finalize()
         ;
 
-    m.def("makeStandardIcon",
-          &makeStandardIcon,
-          py::arg("type"));
+    Icon.def_static("standard",
+                    &Icon::standard,
+                    py::arg("type"));
 
-    m.def("makeThemeIcon",
-          &makeThemeIcon,
-          py::arg("name"));
+    Icon.def_static("grapheme",
+                    py::overload_cast<const QString &, double, const QBrush &>(&Icon::grapheme),
+                    py::arg("grapheme"),
+                    py::arg("scalar") = 1.0,
+                    py::arg("brush") = Icon::graphemeDefaultBrush());
 
-    m.def("makeGraphemeIcon",
-          &makeGraphemeIcon,
-          py::arg("grapheme"),
-          py::arg("scalar") = graphemeIconDefaultScalar(),
-          py::arg("color") = graphemeIconDefaultColor());
+    Icon.def_static("iconified",
+                    &Icon::iconified,
+                    py::arg("icon"),
+                    py::arg("background_brush") = Icon::iconifiedDefaultBackgroundBrush(),
+                    py::arg("border_radius") = 1.0,
+                    py::arg("border_width") = 1,
+                    py::arg("border_brush") = Icon::iconifiedDefaultBorderBrush());
 
-    m.def("makeIconifiedIcon",
-          &makeIconifiedIcon,
-          py::arg("src"),
-          py::arg("color") = iconifiedIconDefaultColor(),
-          py::arg("border_radius") = iconifiedIconDefaultBorderRadius(),
-          py::arg("border_width") = iconifiedIconDefaultBorderWidth(),
-          py::arg("border_color") = iconifiedIconDefaultBorderColor());
-
-    m.def("makeComposedIcon",
-          &makeComposedIcon,
-          py::arg("src1"),
-          py::arg("src2"),
-          py::arg("size1") = composedIconDefaultSize(),
-          py::arg("size2") = composedIconDefaultSize(),
-          py::arg("x1") = composedIconDefaultPos1(),
-          py::arg("y1") = composedIconDefaultPos1(),
-          py::arg("x2") = composedIconDefaultPos2(),
-          py::arg("y2") = composedIconDefaultPos2());
+    Icon.def_static("composed",
+                    &Icon::composed,
+                    py::arg("icon1"),
+                    py::arg("icon2"),
+                    py::arg("size1") = .7,
+                    py::arg("size2") = .7,
+                    py::arg("x1") = .0,
+                    py::arg("y1") = .0,
+                    py::arg("x2") = 1.,
+                    py::arg("y2") = 1.);
 
     // ------------------------------------------------------------------------
 

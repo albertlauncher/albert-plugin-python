@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(python VERSION 8.0.0)
 
 find_package(Albert REQUIRED)
+find_package(QCoro6 REQUIRED COMPONENTS Coro)
 
 set(PYBIND11_FINDPYTHON ON)
 #find_package(Python 3.8 COMPONENTS Interpreter Development REQUIRED)
@@ -9,8 +10,11 @@ add_subdirectory(pybind11)
 
 albert_plugin(
     INCLUDE PRIVATE $<TARGET_PROPERTY:albert::applications,INTERFACE_INCLUDE_DIRECTORIES>
-    LINK PRIVATE pybind11::embed
+    LINK PRIVATE
+        pybind11::embed
+        QCoro6::Coro
     QT Concurrent Widgets
+
 )
 
 target_sources(${PROJECT_NAME} PRIVATE albert.pyi)
