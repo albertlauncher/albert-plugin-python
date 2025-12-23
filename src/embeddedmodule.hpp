@@ -73,6 +73,34 @@ struct TrampolineDeleter
     }
 };
 
+// This type is required to make C++ generators usable in Python
+class PyItemGeneratorWrapper
+{
+    ItemGenerator gen;
+    optional<ItemGenerator::iterator> it;
+
+public:
+    explicit PyItemGeneratorWrapper(ItemGenerator g)
+        : gen(std::move(g)) {}
+
+    PyItemGeneratorWrapper &iter() { return *this; }
+
+    std::vector<std::shared_ptr<albert::Item>> next()
+    {
+        if (it)
+            if (it == gen.end())
+                throw pybind11::stop_iteration();
+            else
+                ++(*it);
+        else
+            it = gen.begin();
+
+        if (it == gen.end())
+            throw pybind11::stop_iteration();
+
+        return ::move(**it);
+    }
+};
 
 PYBIND11_EMBEDDED_MODULE(albert, m)
 {
@@ -378,6 +406,16 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     // ------------------------------------------------------------------------
 
+
+    py::classh<PyItemGeneratorWrapper>(m, "ItemGenerator")
+
+        .def("__iter__", &PyItemGeneratorWrapper::iter,
+             py::return_value_policy::reference_internal)
+
+        .def("__next__", &PyItemGeneratorWrapper::next);
+
+        ;
+
     py::class_<GeneratorQueryHandler,
                QueryHandler,
                PyGeneratorQueryHandler<>,
@@ -395,7 +433,6 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         ;
 
     // ------------------------------------------------------------------------
-
 
     // Do not expose members to avoid unnecessary casts
     py::classh<RankItem>(m, "RankItem")
@@ -416,7 +453,9 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
         // BASE IMPLEMENTATION
         .def("items",
-             &RankedQueryHandler::items,
+             [](RankedQueryHandler &self, QueryContext *ctx) {
+                 return PyItemGeneratorWrapper(self.items(*ctx));
+             },
              py::arg("context"))
 
         // PURE VIRTUAL
@@ -425,7 +464,9 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
              py::arg("context"))
 
         .def_static("lazySort",
-                    &RankedQueryHandler::lazySort,
+                    [](vector<RankItem> rank_items) {
+                        return PyItemGeneratorWrapper(RankedQueryHandler::lazySort(::move(rank_items)));
+                    },
                     py::arg("rank_items"))
 
         ;
