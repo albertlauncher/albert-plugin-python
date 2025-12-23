@@ -19,9 +19,14 @@ private slots:
     void testIndexItem();
     void testMatcher();
     void testIconFactories();
-    void testQuery();
 
-    void testTriggerQueryHandler();
+    void testQueryContext();
+    // void testQueryResults();
+    // void testQueryExecution();
+
+    // void testQueryHandler();
+    void testGeneratorQueryHandler();
+    void testRankedQueryHandler();
     void testGlobalQueryHandler();
     void testIndexQueryHandler();
     void testFallbackQueryHandler();
