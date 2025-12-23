@@ -506,6 +506,11 @@ class PyGlobalQueryHandler : public PyRankedQueryHandler<Base>
         else
             return Base::items(context);
     }
+
+    // No type mismatch workaround required since base class is not called.
+    vector<RankItem> rankItems(QueryContext &context) override
+    { PYBIND11_OVERRIDE_PURE(vector<RankItem>, Base, rankItems, &context); }
+
 };
 
 
