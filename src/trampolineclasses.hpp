@@ -489,6 +489,23 @@ public:
 template <class Base = GlobalQueryHandler>
 class PyGlobalQueryHandler : public PyRankedQueryHandler<Base>
 {
+    //
+    // This is required due to the "final" quirks of the pybind trampoline chain
+    //
+    // GeneratorQueryHandler   | declares pure
+    // RankedQueryHandler      | overrides "final"
+    // PyGeneratorQueryHandler | overrides "pure" on python side
+    // PyRankedQueryHandler    | calls will throw "call to pure" error
+    //
+    ItemGenerator items(QueryContext &context) override
+    {
+        auto fn_items_override = getOverrideLocked(this, "items");
+        if (fn_items_override)
+            // ! This move releases the py object, such that GIL is not required on destruction
+            return ItemGeneratorWrapper::generator(::move(fn_items_override), context);
+        else
+            return Base::items(context);
+    }
 };
 
 
