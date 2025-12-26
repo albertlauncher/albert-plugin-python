@@ -19,9 +19,6 @@
 [submodule "plugins/docker"]
 	path = plugins/docker
 	url = https://github.com/albertlauncher/albert-plugin-python-docker
-[submodule "plugins/duckduckgo"]
-	path = plugins/duckduckgo
-	url = https://github.com/albertlauncher/albert-plugin-python-duckduckgo
 [submodule "plugins/emoji"]
 	path = plugins/emoji
 	url = https://github.com/albertlauncher/albert-plugin-python-emoji
