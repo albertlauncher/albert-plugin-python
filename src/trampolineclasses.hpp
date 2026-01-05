@@ -375,10 +375,10 @@ public:
         auto gen = fn_items(&ctx); // may throw
 
         if (!gen)
-            py::pybind11_fail("Failed creating generator from \"items\" override.");
+            throw runtime_error("Failed creating generator from \"items\" override.");
 
         if (!py::hasattr(gen, "__next__"))
-            py::pybind11_fail("Generator object has no attr \"__next__\".");
+            throw runtime_error("Generator object has no attr \"__next__\".");
 
         fn_next = gen.attr("__next__");
     }
@@ -437,7 +437,7 @@ public:
             // ! This move releases the py object, such that GIL is not required on destruction
             return ItemGeneratorWrapper::generator(::move(fn_items_override), context);
         else
-            pybind11::pybind11_fail("Pure virtual function \"items\"");
+            throw runtime_error("Pure virtual function \"items\"");
     }
 
     // //
