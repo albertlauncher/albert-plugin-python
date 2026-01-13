@@ -10,19 +10,20 @@
 #include <QDir>
 #include <QFile>
 #include <QFontDatabase>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QPointer>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QSettings>
 #include <QTextEdit>
 #include <QUrl>
+#include <QtConcurrentRun>
 #include <albert/extensionregistry.h>
 #include <albert/logging.h>
 #include <albert/messagebox.h>
 #include <albert/systemutil.h>
-#include <QJsonDocument>
-#include <QJsonArray>
-#include <QJsonObject>
 #include <chrono>
 ALBERT_LOGGING_CATEGORY("python")
 using namespace Qt::StringLiterals;
@@ -95,27 +96,51 @@ Plugin::Plugin()
 
     filesystem::create_directories(dataLocation() / PLUGINS);
 
-    updateStubFile();
-
     initPythonInterpreter();
-
-    // Add venv site packages to path
-    py::module::import("site").attr("addsitedir")(siteDirPath().c_str());
-
-    release_.reset(new py::gil_scoped_release);  // Gil is initially held.
-
-    initVirtualEnvironment();
-
-    plugins_ = scanPlugins();
 }
 
 Plugin::~Plugin()
 {
     release_.reset();
-    plugins_.clear();
+    loaders_.clear();
 
     // Causes hard to debug crashes, mem leaked, but nobody will toggle it a lot
     // py::finalize_interpreter();
+}
+
+void Plugin::initialize()
+{
+    QtConcurrent::run([this] -> shared_ptr<vector<unique_ptr<PyPluginLoader>>> {
+        initVirtualEnvironment();
+        updateStubFile();
+
+        // Set loader thread affinity to main thread
+        auto loaders = scanPlugins();
+        for (auto &loader : loaders)
+            loader->moveToThread(this->thread());
+
+        // Make copyable for missing qtconcurrent move semantics
+        return make_shared<vector<unique_ptr<PyPluginLoader>>>(::move(loaders));
+    })
+    .then(this, [this](shared_ptr<vector<unique_ptr<PyPluginLoader>>> loaders) {
+        loaders_ = ::move(*loaders);
+        PluginInstance::initialize();
+    })
+    .onCanceled(this, [] {
+        WARN << "Cancelled plugin initialization.";
+    })
+    .onFailed(this, [](const QUnhandledException &que) {
+        if (que.exception())
+            rethrow_exception(que.exception());
+        else
+            throw runtime_error("QUnhandledException::exception() returned nullptr.");
+    })
+    .onFailed(this, [](const exception &e) {
+        CRIT << "Exception while initializing plugin:" << e.what();
+    })
+    .onFailed(this, [] {
+        CRIT << "Unknown exception while initializing plugin.";
+    });
 }
 
 void Plugin::updateStubFile() const
@@ -141,7 +166,7 @@ void Plugin::updateStubFile() const
     }
 }
 
-void Plugin::initPythonInterpreter() const
+void Plugin::initPythonInterpreter()
 {
     DEBG << "Initializing Python interpreter";
     PyConfig config;
@@ -153,42 +178,54 @@ void Plugin::initPythonInterpreter() const
                                    status.func, status.err_msg));
     PyConfig_Clear(&config);
     dumpPyConfig(config);
+
+    // Gil is initially held. We want it to be released by default.
+    release_.reset(new py::gil_scoped_release);
 }
 
 void Plugin::initVirtualEnvironment() const
 {
-    if (is_directory(venvPath()))
-        return;
+    if (!is_directory(venvPath())){
+        py::gil_scoped_acquire acquire;
 
+        auto system_python = py::module::import("sys").attr("prefix").cast<path>() / BIN / PYTHON;
+
+        DEBG << "python:" << system_python;
+        DEBG << "venvPath" << venvPath();
+        DEBG << "siteDirPath" << siteDirPath();
+        DEBG << "userPluginDirectoryPath" << userPluginDirectoryPath();
+        DEBG << "stubFilePath" << stubFilePath();
+
+        // Create the venv
+        QProcess p;
+        p.start(QString::fromLocal8Bit(system_python.native()),
+                {
+                    u"-m"_s,
+                    u"venv"_s,
+                    //"--upgrade",
+                    //"--upgrade-deps",
+                    toQString(venvPath())
+                });
+
+        DEBG << "Initializing venv using system interpreter:"
+             << (QStringList() << p.program() << p.arguments()).join(QChar::Space);
+
+        p.waitForFinished(-1);
+
+        if (auto out = p.readAllStandardOutput(); !out.isEmpty())
+            DEBG << out;
+
+        if (auto err = p.readAllStandardError(); !err.isEmpty())
+            WARN << err;
+
+        if (p.exitCode() != 0)
+            throw runtime_error(tr("Failed initializing virtual environment. Exit code: %1.")
+                                    .arg(p.exitCode()).toStdString());
+    }
+
+    // Add venv site packages to path
     py::gil_scoped_acquire acquire;
-
-    auto system_python = py::module::import("sys").attr("prefix").cast<path>() / BIN / PYTHON;
-
-    // Create the venv
-    QProcess p;
-    p.start(QString::fromLocal8Bit(system_python.native()),
-            {
-             u"-m"_s,
-             u"venv"_s,
-             //"--upgrade",
-             //"--upgrade-deps",
-             toQString(venvPath())
-            });
-
-    DEBG << "Initializing venv using system interpreter:"
-         << (QStringList() << p.program() << p.arguments()).join(QChar::Space);
-
-    p.waitForFinished(-1);
-
-    if (auto out = p.readAllStandardOutput(); !out.isEmpty())
-        DEBG << out;
-
-    if (auto err = p.readAllStandardError(); !err.isEmpty())
-        WARN << err;
-
-    if (p.exitCode() != 0)
-        throw runtime_error(tr("Failed initializing virtual environment. Exit code: %1.")
-                                .arg(p.exitCode()).toStdString());
+    py::module::import("site").attr("addsitedir")(siteDirPath().c_str());
 }
 
 path Plugin::venvPath() const { return dataLocation() / VENV; }
@@ -236,7 +273,7 @@ vector<unique_ptr<PyPluginLoader>> Plugin::scanPlugins() const
 vector<PluginLoader*> Plugin::plugins()
 {
     vector<PluginLoader*> plugins;
-    for (auto &plugin : plugins_)
+    for (auto &plugin : loaders_)
         plugins.emplace_back(plugin.get());
     return plugins;
 }

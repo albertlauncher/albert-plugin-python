@@ -20,6 +20,8 @@ public:
     Plugin();
     ~Plugin() override;
 
+    void initialize() override;
+
     QWidget* buildConfigWidget() override;
     std::vector<albert::PluginLoader*> plugins() override;
 
@@ -30,9 +32,9 @@ private:
 
     mutable std::mutex pip_mutex_;
 
-    void updateStubFile() const;
-    void initPythonInterpreter() const;
+    void initPythonInterpreter();
     void initVirtualEnvironment() const;
+    void updateStubFile() const;
 
     std::filesystem::path venvPath() const;
     std::filesystem::path siteDirPath() const;
@@ -42,7 +44,7 @@ private:
     std::vector<std::unique_ptr<PyPluginLoader>> scanPlugins() const;
 
     albert::StrongDependency<applications::Plugin> apps{QStringLiteral("applications")};
-    std::vector<std::unique_ptr<PyPluginLoader>> plugins_;
+    std::vector<std::unique_ptr<PyPluginLoader>> loaders_;
     std::unique_ptr<pybind11::gil_scoped_release> release_;
 
 };

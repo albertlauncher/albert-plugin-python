@@ -220,47 +220,15 @@ void PyPluginLoader::load() noexcept
                 throw runtime_error(u"%1:\n\n%2"_s.arg(Plugin::tr("Failed installing dependencies"),
                                                        err).toStdString());
 
-        auto tp = system_clock::now();
-        load_();
-        return duration_cast<milliseconds>(system_clock::now() - tp).count();
-    })
-    .then(this, [this](long long dur_l){
-        emit finished(tr("Loading: %1 ms").arg(dur_l));
-    })
-    .onFailed(this, [this](const QUnhandledException &que) {
-        QString error;
-        if (que.exception())
-            try {
-                std::rethrow_exception(que.exception());
-            } catch (const std::exception &e) {
-                error = QString::fromStdString(e.what());
-            }
-        else
-            error = u"QUnhandledException but exception() returns nullptr"_s;
-        WARN << error;
-        emit finished(error);
-    })
-    .onFailed(this, [this](const std::exception &e) {
-        const auto error = QString::fromStdString(e.what());
-        WARN << error;
-        emit finished(error);
-    })
-    .onFailed(this, [this]{
-        const auto error = u"Unknown exception in QtPluginLoader::load()"_s;
-        WARN << error;
-        emit finished(error);
-    });
-}
-
-void PyPluginLoader::load_()
-{
-    try {
         py::gil_scoped_acquire acquire;
+
+        auto tp = system_clock::now();
 
         // Import as __name__ = albert.package_name
         const auto importlib_util = py::module::import("importlib.util");
         const auto spec_from_file_location = importlib_util.attr("spec_from_file_location");
-        const auto pyspec = spec_from_file_location(u"albert.%1"_s.arg(metadata_.id), source_path_); // Prefix to avoid conflicts
+        const auto pyspec = spec_from_file_location(
+            u"albert.%1"_s.arg(metadata_.id), source_path_); // Prefix to avoid conflicts
         module_ = importlib_util.attr("module_from_spec")(pyspec);
 
         // Attach logcat functions
@@ -289,17 +257,60 @@ void PyPluginLoader::load_()
         // Execute module
         pyspec.attr("loader").attr("exec_module")(module_);
 
+        DEBG << u"%1: Module loaded in %2 ms (%3)"_s
+                    .arg(metadata().id)
+                    .arg(duration_cast<milliseconds>(system_clock::now() - tp).count())
+                    .arg(source_path_);
+
+        tp = system_clock::now();
+
         current_loader = this;
+
         if (py_instance_ = module_.attr(ATTR_PLUGIN_CLASS)();  // may throw
             !py::isinstance<PyPI>(py_instance_))
             throw runtime_error("Python Plugin class is not of type PluginInstance.");
 
         instance_ = py_instance_.cast<PluginInstance*>(); // should never fail
-    }
-    catch (...) {
+        if (!instance_)
+            throw runtime_error("Plugin instance is null.");
+
+        DEBG << u"%1: Instantiated in %2 ms"_s
+                    .arg(metadata().id)
+                    .arg(duration_cast<milliseconds>(system_clock::now() - tp).count());
+
+        // Move thread affinity to main
+        instance_->moveToThread(this->thread());
+    })
+    .then(this, [this] {
+        emit finished({});
+    })
+    .onCanceled(this, [] {
+    })
+    .onFailed(this, [](const QUnhandledException &que) {
+        if (que.exception())
+            rethrow_exception(que.exception());
+        else
+            throw runtime_error("QUnhandledException::exception() returned nullptr.");
+    })
+    .onFailed(this, [this](const py::error_already_set &e) {
+        if (!e.matches(PyExc_ModuleNotFoundError))  // Catch only import errors
+            throw;
+        else if (auto err = plugin_.installPackages(metadata_.runtime_dependencies);
+                 !err.isNull())
+            throw runtime_error(u"%1:\n\n%2"_s
+                                    .arg(tr("Failed installing dependencies"),
+                                         err).toStdString());
+        else
+            load();  // On success try to load again
+    })
+    .onFailed(this, [this](const exception &e) {
         unload();
-        throw;
-    }
+        emit finished(QString::fromStdString(e.what()));
+    })
+    .onFailed(this, [this]{
+        unload();
+        emit finished(u"Unknown exception while loading plugin."_s);
+    });
 }
 
 void PyPluginLoader::unload() noexcept

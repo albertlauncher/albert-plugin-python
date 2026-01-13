@@ -40,8 +40,6 @@ public:
 
 private:
 
-    void load_();
-
     const Plugin &plugin_;
 
     const QString module_path_;

@@ -58,8 +58,8 @@
 <context>
     <name>PyPluginLoader</name>
     <message>
-        <source>Loading: %1 ms</source>
-        <translation>Laden: %1 ms</translation>
+        <source>Failed installing dependencies</source>
+        <translation>Installieren der Abhängigkeiten fehlgeschlagen</translation>
     </message>
 </context>
 </TS>
