@@ -15,7 +15,6 @@
 #include <QCoroGenerator>
 #include <QString>
 #include <QWidget>
-#include <albert/extensionregistry.h>
 #include <albert/fallbackhandler.h>
 #include <albert/icon.h>
 #include <albert/indexqueryhandler.h>

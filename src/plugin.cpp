@@ -20,7 +20,6 @@
 #include <QTextEdit>
 #include <QUrl>
 #include <QtConcurrentRun>
-#include <albert/extensionregistry.h>
 #include <albert/logging.h>
 #include <albert/messagebox.h>
 #include <albert/systemutil.h>
