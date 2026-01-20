@@ -335,11 +335,9 @@ bool Plugin::checkPackages(const QStringList &packages) const
         while (!stream.atEnd())
         {
             const auto line = stream.readLine();
-            const auto tokens = line.split(u"=="_s);
-            if (tokens.size() != 2)
-                WARN << "Unexpected line format in pip freeze output:" << line;
-            else
-                pkgs.insert(tokens[0].toLower());
+            static const auto re = QRegularExpression(u"==|\\s|@"_s);
+            const auto token = line.section(re, 0, 0, QString::SectionSkipEmpty);
+            pkgs.insert(token.toLower());
         }
 
         return ranges::all_of(packages,
