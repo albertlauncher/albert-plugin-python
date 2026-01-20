@@ -261,9 +261,10 @@ void PyPluginLoader::load() noexcept
                     .arg(metadata().id)
                     .arg(duration_cast<milliseconds>(system_clock::now() - tp).count())
                     .arg(source_path_);
-
-        tp = system_clock::now();
-
+    })
+    .then(this, [this] {
+        auto tp = system_clock::now();
+        py::gil_scoped_acquire acquire;
         current_loader = this;
 
         if (py_instance_ = module_.attr(ATTR_PLUGIN_CLASS)();  // may throw
@@ -278,10 +279,6 @@ void PyPluginLoader::load() noexcept
                     .arg(metadata().id)
                     .arg(duration_cast<milliseconds>(system_clock::now() - tp).count());
 
-        // Move thread affinity to main
-        instance_->moveToThread(this->thread());
-    })
-    .then(this, [this] {
         emit finished({});
     })
     .onCanceled(this, [] {
