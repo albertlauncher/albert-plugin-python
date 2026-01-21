@@ -289,17 +289,6 @@ void PyPluginLoader::load() noexcept
         else
             throw runtime_error("QUnhandledException::exception() returned nullptr.");
     })
-    .onFailed(this, [this](const py::error_already_set &e) {
-        if (!e.matches(PyExc_ModuleNotFoundError))  // Catch only import errors
-            throw;
-        else if (auto err = plugin_.installPackages(metadata_.runtime_dependencies);
-                 !err.isNull())
-            throw runtime_error(u"%1:\n\n%2"_s
-                                    .arg(tr("Failed installing dependencies"),
-                                         err).toStdString());
-        else
-            load();  // On success try to load again
-    })
     .onFailed(this, [this](const exception &e) {
         unload();
         emit finished(QString::fromStdString(e.what()));
