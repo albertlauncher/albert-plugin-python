@@ -215,10 +215,7 @@ void PyPluginLoader::load() noexcept
         // Check runtime dependencies
         if (!metadata_.runtime_dependencies.isEmpty()
             && !plugin_.checkPackages(metadata_.runtime_dependencies))
-            if (auto err = plugin_.installPackages(metadata_.runtime_dependencies);
-                !err.isNull())
-                throw runtime_error(u"%1:\n\n%2"_s.arg(Plugin::tr("Failed installing dependencies"),
-                                                       err).toStdString());
+            plugin_.installPackages(metadata_.runtime_dependencies);
 
         py::gil_scoped_acquire acquire;
 
@@ -227,8 +224,8 @@ void PyPluginLoader::load() noexcept
         // Import as __name__ = albert.package_name
         const auto importlib_util = py::module::import("importlib.util");
         const auto spec_from_file_location = importlib_util.attr("spec_from_file_location");
-        const auto pyspec = spec_from_file_location(
-            u"albert.%1"_s.arg(metadata_.id), source_path_); // Prefix to avoid conflicts
+        const auto pyspec = spec_from_file_location(u"albert.%1"_s  // Prefix to avoid conflicts
+                                                        .arg(metadata_.id), source_path_);
         module_ = importlib_util.attr("module_from_spec")(pyspec);
 
         // Attach logcat functions

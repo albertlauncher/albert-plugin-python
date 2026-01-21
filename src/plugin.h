@@ -26,7 +26,7 @@ public:
     std::vector<albert::PluginLoader*> plugins() override;
 
     bool checkPackages(const QStringList &packages) const;
-    QString installPackages(const QStringList &packages) const;
+    void installPackages(const QStringList &packages) const;
 
 private:
 

@@ -35,20 +35,27 @@ namespace py = pybind11;
 #define STR(s) #s
 
 applications::Plugin *apps;  // used externally
-static const char *BIN = "bin";
-static const char *STUB_VERSION = "stub_version";
-static const char *LIB = "lib";
-static const char *PIP = "pip" XSTR(PY_MAJOR_VERSION) "." XSTR(PY_MINOR_VERSION);
-static const char *PLUGINS = "plugins";
-static const char *PYTHON = "python" XSTR(PY_MAJOR_VERSION) "." XSTR(PY_MINOR_VERSION);
-static const char *SITE_PACKAGES = "site-packages";
-static const char *STUB_FILE = "albert.pyi";
-static const char *VENV = "venv";
-static const char *sk_venv_python_version = "venv_python_version";
+
+namespace {
+
+const auto& BIN = "bin";
+const auto& STUB_VERSION = "stub_version";
+const auto& LIB = "lib";
+const auto& PIP = "pip" XSTR(PY_MAJOR_VERSION) "." XSTR(PY_MINOR_VERSION);
+const auto& PLUGINS = "plugins";
+const auto& PYTHON = "python" XSTR(PY_MAJOR_VERSION) "." XSTR(PY_MINOR_VERSION);
+const auto& SITE_PACKAGES = "site-packages";
+const auto& STUB_FILE = "albert.pyi";
+const auto& VENV = "venv";
+const auto& sk_venv_python_version = "venv_python_version";
+const auto& red = "\x1b[31m";
+const auto& reset = "\x1b[0m";
+const auto& cyan = "\x1b[36m";
+
+}
 
 static void dumpPyConfig(PyConfig &config)
 {
-
     DEBG << "config.home" << QString::fromWCharArray(config.home);
     DEBG << "config.base_executable" << QString::fromWCharArray(config.base_executable);
     DEBG << "config.executable" << QString::fromWCharArray(config.executable);
@@ -83,6 +90,41 @@ static void dumpPyConfig(PyConfig &config)
 //     for (const auto &path : sys.attr("path").cast<QStringList>())
 //         DEBG << " -" << path;
 // }
+
+static QString run(const QString program, const QStringList args)
+{
+    const auto cmdline = (QStringList(program) + args).join(QChar::Space);
+
+    QProcess p;
+    DEBG << u"Running '%1'"_s.arg(cmdline);
+    p.start(program, args);
+
+    if (!p.waitForFinished())
+    {
+        const auto msg = QT_TRANSLATE_NOOP("Plugin", "'%1' timed out (30s).");
+        WARN << QString::fromUtf8(msg).arg(cmdline);
+        throw runtime_error(Plugin::tr(msg).arg(cmdline).toStdString());
+    }
+    else if (p.exitStatus() != QProcess::ExitStatus::NormalExit)
+    {
+        const auto msg = QT_TRANSLATE_NOOP("Plugin", "'%1' crashed.");
+        WARN << QString::fromUtf8(msg).arg(cmdline);
+        throw runtime_error(Plugin::tr(msg).arg(cmdline).toStdString());
+    }
+    else if (p.exitCode() != EXIT_SUCCESS)
+    {
+        const auto msg = QT_TRANSLATE_NOOP("Plugin", "'%1' finished with exit code: %2.");
+        WARN << QString::fromUtf8(msg).arg(cmdline).arg(p.exitCode());
+        if (const auto stdout = p.readAllStandardOutput(); !stdout.isEmpty())
+            WARN << cyan << stdout << reset;
+        if (const auto stderr = p.readAllStandardError(); !stderr.isEmpty())
+            WARN << red << stderr << reset;
+        throw runtime_error(Plugin::tr(msg).arg(cmdline).arg(p.exitCode()).toStdString());
+    }
+    else
+        return QString::fromUtf8(p.readAllStandardOutput());
+}
+
 
 Plugin::Plugin()
 {
@@ -199,37 +241,14 @@ void Plugin::initVirtualEnvironment() const
     {
         auto system_python = py::module::import("sys").attr("prefix").cast<path>() / BIN / PYTHON;
 
-        DEBG << "python:" << system_python;
-        DEBG << "venvPath" << venvPath();
-        DEBG << "siteDirPath" << siteDirPath();
-        DEBG << "userPluginDirectoryPath" << userPluginDirectoryPath();
-        DEBG << "stubFilePath" << stubFilePath();
+        DEBG << "Initializing venv using system interpreter" << system_python;
 
-        // Create the venv
-        QProcess p;
-        p.start(QString::fromLocal8Bit(system_python.native()),
-                {
-                    u"-m"_s,
-                    u"venv"_s,
-                    //"--upgrade",
-                    //"--upgrade-deps",
-                    toQString(venvPath())
-                });
-
-        DEBG << "Initializing venv using system interpreter:"
-             << (QStringList() << p.program() << p.arguments()).join(QChar::Space);
-
-        p.waitForFinished(-1);
-
-        if (auto out = p.readAllStandardOutput(); !out.isEmpty())
-            DEBG << out;
-
-        if (auto err = p.readAllStandardError(); !err.isEmpty())
-            WARN << err;
-
-        if (p.exitCode() != 0)
-            throw runtime_error(tr("Failed initializing virtual environment. Exit code: %1.")
-                                    .arg(p.exitCode()).toStdString());
+        DEBG << run(QString::fromLocal8Bit(system_python.native()),
+                    {u"-m"_s,
+                     u"venv"_s,
+                     //"--upgrade",
+                     //"--upgrade-deps",
+                     toQString(venvPath())});
 
         state()->setValue(sk_venv_python_version, QString::fromLatin1(PY_VERSION));
     }
@@ -333,60 +352,22 @@ bool Plugin::checkPackages(const QStringList &packages) const
 {
     scoped_lock lock(pip_mutex_);
 
-    QProcess p;
-    p.setProgram(toQString(venvPath() / BIN / PIP));
-    p.setArguments({u"freeze"_s});
-    p.start();
-    p.waitForFinished(-1);
+    const auto stdout = run(toQString(venvPath() / BIN / PIP), {u"freeze"_s});
 
-    if (p.exitStatus() == QProcess::ExitStatus::NormalExit && p.exitCode() == EXIT_SUCCESS)
-    {
-        set<QString> pkgs;
-        QTextStream stream(&p);
-        while (!stream.atEnd())
-        {
-            const auto line = stream.readLine();
-            static const auto re = QRegularExpression(u"==|\\s|@"_s);
-            const auto token = line.section(re, 0, 0, QString::SectionSkipEmpty);
-            pkgs.insert(token.toLower());
-        }
+    set<QString> pkgs;
+    static const auto re_line = QRegularExpression("[\r\n]"_L1);
+    static const auto re_sep = QRegularExpression(u"==|\\s|@"_s);
+    for (const auto &line : stdout.split(re_line, Qt::SkipEmptyParts))
+        pkgs.insert(line.section(re_sep, 0, 0, QString::SectionSkipEmpty).toLower());
 
-        return ranges::all_of(packages,
-                              [&pkgs](const QString &pkg) { return pkgs.contains(pkg.toLower()); });
-    }
-    else
-    {
-        WARN << "Failed running 'pip freeze'. Exit code" << p.exitCode();
-        if (const auto stderr = p.readAllStandardError(); !stderr.isEmpty())
-            WARN << stderr;
-        return false;
-    }
+    return ranges::all_of(packages,
+                          [&pkgs](const QString &pkg) { return pkgs.contains(pkg.toLower()); });
 }
 
-QString Plugin::installPackages(const QStringList &packages) const
+void Plugin::installPackages(const QStringList &packages) const
 {
     scoped_lock lock(pip_mutex_);
 
-    QProcess p;
-    p.setProgram(toQString(venvPath() / BIN / PIP));
-    p.setArguments(QStringList{u"install"_s, u"--disable-pip-version-check"_s} << packages);
-
-    DEBG << QString(u"Installing %1. [%2]"_s)
-                .arg(packages.join(u", "_s), (QStringList(p.program()) << p.arguments()).join(u" "_s));
-
-    p.start();
-    p.waitForFinished(-1);
-
-    const auto stdout = p.readAllStandardOutput();
-    if (!stdout.isEmpty())
-        DEBG << stdout;
-
-    if (p.exitStatus() != QProcess::ExitStatus::NormalExit || p.exitCode() != EXIT_SUCCESS)
-    {
-        const auto stderr = p.readAllStandardError();
-        WARN << stderr;
-        return QString::fromUtf8(stderr);
-    }
-
-    return {};
+    DEBG << run(toQString(venvPath() / BIN / PIP),
+                QStringList{u"install"_s, u"--disable-pip-version-check"_s} << packages);
 }
