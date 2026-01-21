@@ -44,6 +44,7 @@ static const char *PYTHON = "python" XSTR(PY_MAJOR_VERSION) "." XSTR(PY_MINOR_VE
 static const char *SITE_PACKAGES = "site-packages";
 static const char *STUB_FILE = "albert.pyi";
 static const char *VENV = "venv";
+static const char *sk_venv_python_version = "venv_python_version";
 
 static void dumpPyConfig(PyConfig &config)
 {
@@ -184,9 +185,18 @@ void Plugin::initPythonInterpreter()
 
 void Plugin::initVirtualEnvironment() const
 {
-    if (!is_directory(venvPath())){
-        py::gil_scoped_acquire acquire;
+    py::gil_scoped_acquire acquire;
 
+    // Reset venv if python version changed
+    if (is_directory(venvPath())
+        && (state()->value(sk_venv_python_version).toString() != QString::fromLatin1(PY_VERSION)))
+    {
+        INFO << "Python version changed. Resetting virtual environment.";
+        QFile::moveToTrash(venvPath());
+    }
+
+    if (!is_directory(venvPath()))
+    {
         auto system_python = py::module::import("sys").attr("prefix").cast<path>() / BIN / PYTHON;
 
         DEBG << "python:" << system_python;
@@ -220,10 +230,11 @@ void Plugin::initVirtualEnvironment() const
         if (p.exitCode() != 0)
             throw runtime_error(tr("Failed initializing virtual environment. Exit code: %1.")
                                     .arg(p.exitCode()).toStdString());
+
+        state()->setValue(sk_venv_python_version, QString::fromLatin1(PY_VERSION));
     }
 
     // Add venv site packages to path
-    py::gil_scoped_acquire acquire;
     py::module::import("site").attr("addsitedir")(siteDirPath().c_str());
 }
 
