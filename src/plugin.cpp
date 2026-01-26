@@ -91,7 +91,7 @@ static void dumpPyConfig(PyConfig &config)
 //         DEBG << " -" << path;
 // }
 
-static QString run(const QString program, const QStringList args)
+static QString run(const QString program, const QStringList args, int timeout_ms = 300000)
 {
     const auto cmdline = (QStringList(program) + args).join(QChar::Space);
 
@@ -99,11 +99,11 @@ static QString run(const QString program, const QStringList args)
     DEBG << u"Running '%1'"_s.arg(cmdline);
     p.start(program, args);
 
-    if (!p.waitForFinished())
+    if (!p.waitForFinished(timeout_ms))
     {
-        const auto msg = QT_TRANSLATE_NOOP("Plugin", "'%1' timed out (30s).");
-        WARN << QString::fromUtf8(msg).arg(cmdline);
-        throw runtime_error(Plugin::tr(msg).arg(cmdline).toStdString());
+        const auto msg = QT_TRANSLATE_NOOP("Plugin", "'%1' timed out (%2s).");
+        WARN << QString::fromUtf8(msg).arg(cmdline).arg(timeout_ms / 1000);
+        throw runtime_error(Plugin::tr(msg).arg(cmdline).arg(timeout_ms / 1000).toStdString());
     }
     else if (p.exitStatus() != QProcess::ExitStatus::NormalExit)
     {
