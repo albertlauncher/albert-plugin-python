@@ -39,27 +39,24 @@
 <context>
     <name>Plugin</name>
     <message>
-        <source>Failed initializing virtual environment. Exit code: %1.</source>
-        <translation>Initialisierung der virtuellen Umgebung fehlgeschlagen. Rückgabewert: %1.</translation>
-    </message>
-    <message>
         <source>No &apos;%1&apos; in $PATH.</source>
         <translation>Kein &apos;%1&apos; in $PATH.</translation>
     </message>
     <message>
+        <source>&apos;%1&apos; timed out (30s).</source>
+        <translation>&apos;%1&apos; hat das Zeitlimit überschritten (30s).</translation>
+    </message>
+    <message>
+        <source>&apos;%1&apos; crashed.</source>
+        <translation>&apos;%1&apos; ist abgestürzt.</translation>
+    </message>
+    <message>
+        <source>&apos;%1&apos; finished with exit code: %2.</source>
+        <translation>&apos;%1&apos; mit Fehlercode %2 beendet.</translation>
+    </message>
+    <message>
         <source>Resetting the virtual environment requires a restart. Restart now?</source>
         <translation>Das Zurücksetzen der virtuellen Umgebung erfordert einen Neustart. Jetzt neu starten?</translation>
-    </message>
-    <message>
-        <source>Failed installing dependencies</source>
-        <translation>Installieren der Abhängigkeiten fehlgeschlagen.</translation>
-    </message>
-</context>
-<context>
-    <name>PyPluginLoader</name>
-    <message>
-        <source>Failed installing dependencies</source>
-        <translation>Installieren der Abhängigkeiten fehlgeschlagen</translation>
     </message>
 </context>
 </TS>
