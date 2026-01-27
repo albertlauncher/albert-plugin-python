@@ -243,12 +243,15 @@ void Plugin::initVirtualEnvironment() const
 
         DEBG << "Initializing venv using system interpreter" << system_python;
 
-        DEBG << run(QString::fromLocal8Bit(system_python.native()),
-                    {u"-m"_s,
-                     u"venv"_s,
-                     //"--upgrade",
-                     //"--upgrade-deps",
-                     toQString(venvPath())});
+        const auto stdout = run(QString::fromLocal8Bit(system_python.native()),
+                                {u"-m"_s,
+                                 u"venv"_s,
+                                 //"--upgrade",
+                                 //"--upgrade-deps",
+                                 toQString(venvPath())});
+
+        if (!stdout.isEmpty())
+            DEBG << stdout;
 
         state()->setValue(sk_venv_python_version, QString::fromLatin1(PY_VERSION));
     }
