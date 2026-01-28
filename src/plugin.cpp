@@ -371,6 +371,9 @@ void Plugin::installPackages(const QStringList &packages) const
 {
     scoped_lock lock(pip_mutex_);
 
-    DEBG << run(toQString(venvPath() / BIN / PIP),
-                QStringList{u"install"_s, u"--disable-pip-version-check"_s} << packages);
+    const auto stdout = run(toQString(venvPath() / BIN / PIP),
+                            QStringList{u"install"_s, u"--disable-pip-version-check"_s} << packages);
+
+    if (!stdout.isEmpty())
+        DEBG << stdout;
 }
