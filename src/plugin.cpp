@@ -219,7 +219,6 @@ void Plugin::initPythonInterpreter()
         throw runtime_error(format("Failed initializing the interpreter: {} {}",
                                    status.func, status.err_msg));
     PyConfig_Clear(&config);
-    dumpPyConfig(config);
 
     // Gil is initially held. We want it to be released by default.
     release_.reset(new py::gil_scoped_release);
