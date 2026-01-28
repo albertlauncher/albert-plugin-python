@@ -54,29 +54,29 @@ const auto& cyan = "\x1b[36m";
 
 }
 
-static void dumpPyConfig(PyConfig &config)
-{
-    DEBG << "config.home" << QString::fromWCharArray(config.home);
-    DEBG << "config.base_executable" << QString::fromWCharArray(config.base_executable);
-    DEBG << "config.executable" << QString::fromWCharArray(config.executable);
-    DEBG << "config.base_exec_prefix" << QString::fromWCharArray(config.base_exec_prefix);
-    DEBG << "config.exec_prefix" << QString::fromWCharArray(config.exec_prefix);
-    DEBG << "config.base_prefix" << QString::fromWCharArray(config.base_prefix);
-    DEBG << "config.prefix" << QString::fromWCharArray(config.prefix);
-    DEBG << "config.program_name" << QString::fromWCharArray(config.program_name);
-    DEBG << "config.pythonpath_env" << QString::fromWCharArray(config.pythonpath_env);
-    DEBG << "config.platlibdir" << QString::fromWCharArray(config.platlibdir);
-    // DEBG << "config.stdlib_dir" << QString::fromWCharArray(config.stdlib_dir);  // Added in version 3.11
-    // ^DEBG << "config.safe_path" << config.safe_path;  // Added in version 3.11
-    DEBG << "config.install_signal_handlers" << config.install_signal_handlers;
-    DEBG << "config.site_import" << config.site_import;
-    DEBG << "config.user_site_directory" << config.user_site_directory;
-    DEBG << "config.verbose" << config.verbose;
-    DEBG << "config.module_search_paths_set" << config.module_search_paths_set;
-    DEBG << "config.module_search_paths:";
-    for (Py_ssize_t i = 0; i < config.module_search_paths.length; ++i)
-        DEBG << " -" << QString::fromWCharArray(config.module_search_paths.items[i]);
-}
+// static void dumpPyConfig(PyConfig &config)
+// {
+//     DEBG << "config.home" << QString::fromWCharArray(config.home);
+//     DEBG << "config.base_executable" << QString::fromWCharArray(config.base_executable);
+//     DEBG << "config.executable" << QString::fromWCharArray(config.executable);
+//     DEBG << "config.base_exec_prefix" << QString::fromWCharArray(config.base_exec_prefix);
+//     DEBG << "config.exec_prefix" << QString::fromWCharArray(config.exec_prefix);
+//     DEBG << "config.base_prefix" << QString::fromWCharArray(config.base_prefix);
+//     DEBG << "config.prefix" << QString::fromWCharArray(config.prefix);
+//     DEBG << "config.program_name" << QString::fromWCharArray(config.program_name);
+//     DEBG << "config.pythonpath_env" << QString::fromWCharArray(config.pythonpath_env);
+//     DEBG << "config.platlibdir" << QString::fromWCharArray(config.platlibdir);
+//     // DEBG << "config.stdlib_dir" << QString::fromWCharArray(config.stdlib_dir);  // Added in version 3.11
+//     // ^DEBG << "config.safe_path" << config.safe_path;  // Added in version 3.11
+//     DEBG << "config.install_signal_handlers" << config.install_signal_handlers;
+//     DEBG << "config.site_import" << config.site_import;
+//     DEBG << "config.user_site_directory" << config.user_site_directory;
+//     DEBG << "config.verbose" << config.verbose;
+//     DEBG << "config.module_search_paths_set" << config.module_search_paths_set;
+//     DEBG << "config.module_search_paths:";
+//     for (Py_ssize_t i = 0; i < config.module_search_paths.length; ++i)
+//         DEBG << " -" << QString::fromWCharArray(config.module_search_paths.items[i]);
+// }
 
 // static void dumpSysAttributes(const py::module &sys)
 // {
@@ -214,7 +214,7 @@ void Plugin::initPythonInterpreter()
     PyConfig config;
     PyConfig_InitIsolatedConfig(&config);
     config.site_import = 0;
-    dumpPyConfig(config);
+    // dumpPyConfig(config);
     if (auto status = Py_InitializeFromConfig(&config); PyStatus_Exception(status))
         throw runtime_error(format("Failed initializing the interpreter: {} {}",
                                    status.func, status.err_msg));
