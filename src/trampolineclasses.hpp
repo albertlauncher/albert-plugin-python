@@ -342,7 +342,14 @@ public:
     { PYBIND11_OVERRIDE(bool, Base, allowTriggerRemap, ); }
 
     QString defaultTrigger() const override
-    { PYBIND11_OVERRIDE(QString, Base, defaultTrigger, ); }
+    {
+        py::gil_scoped_acquire gil;
+        py::function override = py::get_override(this, "defaultTrigger");
+        if (override)
+            return override().cast<QString>();  // may throw, is okay
+        else
+            return Base::defaultTrigger().mid(7);  // Remove "python."
+    }
 
     void setTrigger(const QString &trigger) override
     { PYBIND11_OVERRIDE(void, Base, setTrigger, trigger); }
