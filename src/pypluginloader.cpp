@@ -261,14 +261,20 @@ void PyPluginLoader::load() noexcept
     })
     .then(this, [this] {
         auto tp = system_clock::now();
-        py::gil_scoped_acquire acquire;
-        current_loader = this;
 
-        if (py_instance_ = module_.attr(ATTR_PLUGIN_CLASS)();  // may throw
-            !py::isinstance<PyPI>(py_instance_))
-            throw runtime_error("Python Plugin class is not of type PluginInstance.");
+        // CRUCIAL
+        // Do not hold the GIL while emitting finished. This leads to hard to find deadlocks!
+        {
+            py::gil_scoped_acquire acquire;
+            current_loader = this;
 
-        instance_ = py_instance_.cast<PluginInstance*>(); // should never fail
+            if (py_instance_ = module_.attr(ATTR_PLUGIN_CLASS)();  // may throw
+                !py::isinstance<PyPI>(py_instance_))
+                throw runtime_error("Python Plugin class is not of type PluginInstance.");
+
+            instance_ = py_instance_.cast<PluginInstance*>(); // should never fail
+        }
+
         if (!instance_)
             throw runtime_error("Plugin instance is null.");
 
@@ -279,6 +285,7 @@ void PyPluginLoader::load() noexcept
         emit finished({});
     })
     .onCanceled(this, [] {
+        CRIT << "UNHANDLED CANCELLATION. Please report a bug if you see this.";
     })
     .onFailed(this, [](const QUnhandledException &que) {
         if (que.exception())
