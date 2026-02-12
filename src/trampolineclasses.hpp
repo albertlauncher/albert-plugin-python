@@ -344,8 +344,8 @@ public:
     QString defaultTrigger() const override
     {
         py::gil_scoped_acquire gil;
-        py::function override = py::get_override(this, "defaultTrigger");
-        if (override)
+        if (auto override = py::get_override(static_cast<const Base *>(this), "defaultTrigger");
+            override)
             return override().cast<QString>();  // may throw, is okay
         else
             return Base::defaultTrigger().mid(7);  // Remove "python."
