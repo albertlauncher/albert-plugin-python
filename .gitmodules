@@ -46,6 +46,9 @@
 [submodule "plugins/pomodoro"]
 	path = plugins/pomodoro
 	url = https://github.com/albertlauncher/albert-plugin-python-pomodoro
+[submodule "plugins/prefpanes"]
+	path = plugins/prefpanes
+	url = https://github.com/albertlauncher/albert-plugin-python-prefpanes
 [submodule "plugins/python_eval"]
 	path = plugins/python_eval
 	url = https://github.com/albertlauncher/albert-plugin-python-python-eval
