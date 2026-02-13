@@ -346,7 +346,7 @@ public:
         py::gil_scoped_acquire gil;
         if (auto override = py::get_override(static_cast<const Base *>(this), "defaultTrigger");
             override)
-            return override().cast<QString>();  // may throw, is okay
+            return override().template cast<QString>();  // may throw, is okay
         else
             return Base::defaultTrigger().mid(7);  // Remove "python."
     }
