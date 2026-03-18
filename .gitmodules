@@ -79,3 +79,6 @@
 [submodule "plugins/zeal"]
 	path = plugins/zeal
 	url = https://github.com/albertlauncher/albert-plugin-python-zeal
+[submodule "plugins/recoll"]
+	path = plugins/recoll
+	url = https://github.com/hyiltiz/albert-plugin-python-recoll.git
