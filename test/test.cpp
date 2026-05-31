@@ -62,7 +62,7 @@ struct MockHandler : public QueryHandler
     QString id() const override { return "test_id"; }
     QString name() const override { return "test_name"; }
     QString description() const override { return "test_desctription"; }
-    std::unique_ptr<QueryExecution> execution(QueryContext &) override { return nullptr; }
+    std::unique_ptr<QueryExecution> execution(QueryContext) override { return nullptr; }
 };
 
 struct MockLoader : public PluginLoader

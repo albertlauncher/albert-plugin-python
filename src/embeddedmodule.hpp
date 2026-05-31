@@ -300,11 +300,14 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     // ------------------------------------------------------------------------
 
-    py::classh<UsageScoring>(m, "UsageScoring")
-        .def("modifyMatchScores",
-             &UsageScoring::modifyMatchScores,
+    py::class_<UsageScoring>(m, "UsageScoring")
+
+        .def("applied",
+             [](UsageScoring &self, const QString &extension_id, vector<RankItem> &rank_items)
+             { return self.applied(extension_id, ::move(rank_items)); },
              py::arg("extension_id"),
              py::arg("rank_items"))
+
         ;
 
     py::class_<QueryContext,
@@ -384,14 +387,14 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         .def("defaultTrigger",
              &QueryHandler::defaultTrigger)
 
-        // .def("setTrigger",
-        //      &QueryHandler::setTrigger)
+        // .def("onTriggerChanged",
+        //      &QueryHandler::onTriggerChanged)
 
         .def("supportsFuzzyMatching",
              &QueryHandler::supportsFuzzyMatching)
 
-        // .def("setFuzzyMatching",
-        //      &QueryHandler::setFuzzyMatching)
+        // .def("onFuzzyMatchingChanged",
+        //      &QueryHandler::onFuzzyMatchingChanged)
 
         // // PURE VIRTUAL
         // .def("execution",
@@ -503,8 +506,8 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         .def("supportsFuzzyMatching",
              &IndexQueryHandler::supportsFuzzyMatching)
 
-        .def("setFuzzyMatching",
-             &IndexQueryHandler::setFuzzyMatching)
+        .def("onFuzzyMatchingChanged",
+             &IndexQueryHandler::onFuzzyMatchingChanged)
 
          // DEFAULT IMPLEMENTATION
         .def("rankItems",

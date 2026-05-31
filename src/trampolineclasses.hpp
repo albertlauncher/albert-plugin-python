@@ -351,14 +351,14 @@ public:
             return Base::defaultTrigger().mid(7);  // Remove "python."
     }
 
-    void setTrigger(const QString &trigger) override
-    { PYBIND11_OVERRIDE(void, Base, setTrigger, trigger); }
+    void onTriggerChanged(const QString &trigger) override
+    { PYBIND11_OVERRIDE(void, Base, onTriggerChanged, trigger); }
 
     bool supportsFuzzyMatching() const override
     { PYBIND11_OVERRIDE(bool, Base, supportsFuzzyMatching, ); }
 
-    void setFuzzyMatching(bool enabled) override
-    { PYBIND11_OVERRIDE(void, Base, setFuzzyMatching, enabled); }
+    void onFuzzyMatchingChanged(bool enabled) override
+    { PYBIND11_OVERRIDE(void, Base, onFuzzyMatchingChanged, enabled); }
 
     // unique_ptr<QueryExecution> execution(QueryContext &context) override
     // { PYBIND11_OVERRIDE_PURE(unique_ptr<QueryExecution>, Base, execution, &context); }
