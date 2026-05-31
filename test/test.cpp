@@ -645,7 +645,7 @@ void PythonTests::testQueryContext()
     // QCOMPARE(py_query.attr("handler")().cast<py::object>().ptr(), &handler);
     QCOMPARE(py_ctx.attr("trigger").cast<QString>(), "test_trigger");
     QCOMPARE(py_ctx.attr("query").cast<QString>(), "test_query");
-    QCOMPARE(py_ctx.attr("isValid").cast<bool>(), true);
+    QCOMPARE(py_ctx.attr("is_valid").cast<bool>(), true);
 }
 
 // void PythonTests::testQueryResults()
