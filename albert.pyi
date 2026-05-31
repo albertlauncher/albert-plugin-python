@@ -73,6 +73,8 @@ Changelog
   - Class ``QueryHandler``
     - Rename method ``setTrigger`` to ``onTriggerChanged``.
     - Rename method ``setFuzzyMatching`` to ``onFuzzyMatchingChanged``.
+  - Class ``QueryContext``
+    - Rename ``usageScoring`` to ``usage_scoring``
 
 - ``5.0``
 
@@ -695,7 +697,7 @@ class QueryContext:
         """
 
     @property
-    def usageScoring(self) -> UsageScoring:
+    def usage_scoring(self) -> UsageScoring:
         """
         Returns the usage scoring.
         """
