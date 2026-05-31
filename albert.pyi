@@ -75,6 +75,7 @@ Changelog
     - Rename method ``setFuzzyMatching`` to ``onFuzzyMatchingChanged``.
   - Class ``QueryContext``
     - Rename ``usageScoring`` to ``usage_scoring``
+    - Rename ``isValid`` to ``is_valid``
 
 - ``5.0``
 
@@ -691,7 +692,7 @@ class QueryContext:
         """
 
     @property
-    def isValid(self) -> bool:
+    def is_valid(self) -> bool:
         """
         Returns ``True`` if the query is valid; ``False`` if it has been cancelled.
         """

@@ -320,7 +320,7 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         .def_property_readonly("query",
                                &QueryContext::query)
 
-        .def_property_readonly("isValid",
+        .def_property_readonly("is_valid",
                                &QueryContext::isValid)
 
         .def_property_readonly("usage_scoring",
