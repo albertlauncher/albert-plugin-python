@@ -134,7 +134,7 @@ Plugin::Plugin()
     DEBG << "Pybind11 version:" << u"%1.%2.%3"_s
                                        .arg(PYBIND11_VERSION_MAJOR)
                                        .arg(PYBIND11_VERSION_MINOR)
-                                       .arg(PYBIND11_VERSION_PATCH);
+                                       .arg(PYBIND11_VERSION_MICRO);
 
     filesystem::create_directories(dataLocation() / PLUGINS);
 
@@ -325,7 +325,7 @@ QWidget *Plugin::buildConfigWidget()
     ui.label_pybind_version->setText(u"%1.%2.%3"_s
                                          .arg(PYBIND11_VERSION_MAJOR)
                                          .arg(PYBIND11_VERSION_MINOR)
-                                         .arg(PYBIND11_VERSION_PATCH));
+                                         .arg(PYBIND11_VERSION_MICRO));
 
     connect(ui.pushButton_venv_open, &QPushButton::clicked,
             this, [this]{ open(venvPath()); });
