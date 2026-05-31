@@ -323,7 +323,7 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
         .def_property_readonly("isValid",
                                &QueryContext::isValid)
 
-        .def_property_readonly("usageScoring",
+        .def_property_readonly("usage_scoring",
                                &QueryContext::usageScoring)
         ;
 
