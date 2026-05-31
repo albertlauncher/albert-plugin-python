@@ -436,7 +436,7 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     // Do not expose members to avoid unnecessary casts
     py::classh<RankItem>(m, "RankItem")
-        .def(py::init<shared_ptr<Item>,float>(),
+        .def(py::init<shared_ptr<Item>, double>(),
              py::arg("item"),
              py::arg("score"))
         ;
