@@ -3,7 +3,7 @@
 .. https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html
 
 ====================================================================================================
-Albert Python interface v5.0
+Albert Python interface v6.0
 ====================================================================================================
 
 To be a valid Python plugin a Python module has to contain at least the mandatory metadata fields
@@ -64,6 +64,15 @@ Optional metadata variables
 ====================================================================================================
 Changelog
 ====================================================================================================
+
+- ``6.0``
+
+  - Class ``UsageScoring``
+    - Remove method ``modifyMatchScores(self, extension_id: str, rank_items: list[RankItem])``.
+    - Add method ``applied(self, extension_id: str, rank_items: list[RankItem]) -> list[RankItem]``.
+  - Class ``QueryHandler``
+    - Rename method ``setTrigger`` to ``onTriggerChanged``.
+    - Rename method ``setFuzzyMatching`` to ``onFuzzyMatchingChanged``.
 
 - ``5.0``
 
@@ -590,10 +599,12 @@ class UsageScoring:
     `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1UsageScoring.html>`_
     """
 
-    def modifyMatchScores(self,
-                          extension_id: str,
-                          rank_items: list[RankItem]):
-        ...
+    def applied(self,
+                extension_id: str,
+                rank_items: list[RankItem]) -> list[RankItem]:
+        """
+        Returns **rank_items** with usage scoring applied.
+        """
 
 
 class StandardItem(Item):
@@ -738,7 +749,7 @@ class QueryHandler(Extension):
         The base class implementation returns ``Extension.id`` with a space appended.
         """
 
-    def setTrigger(self, trigger: str):
+    def onTriggerChanged(self, trigger: str):
         """
         Notifies that the user-defined trigger has changed to **trigger**.
         The base class implementation does nothing.
@@ -748,11 +759,11 @@ class QueryHandler(Extension):
         """
         Returns ``True`` if the handler supports fuzzy matching, otherwise returns ``False``.
         If ``True``, the user can enable fuzzy matching for this handler and
-        ``setFuzzyMatching(bool)`` should be implemented accordingly.
+        ``onFuzzyMatchingChanged(bool)`` should be implemented accordingly.
         The base class implementation returns ``False``.
         """
 
-    def setFuzzyMatching(self, enabled: bool):
+    def onFuzzyMatchingChanged(self, enabled: bool):
         """
         Sets the fuzzy matching mode to **enabled**.
         This function is called when the user toggles fuzzy matching for this handler.
@@ -818,7 +829,7 @@ class IndexQueryHandler(GlobalQueryHandler):
     """
 
     @final
-    def setFuzzyMatching(self, enabled: bool):
+    def onFuzzyMatchingChanged(self, enabled: bool):
         """
         Sets the fuzzy matching mode to **enabled** and triggers ``updateIndexItems()``.
         """
