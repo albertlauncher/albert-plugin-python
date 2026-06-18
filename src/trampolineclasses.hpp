@@ -3,6 +3,7 @@
 #pragma once
 
 #include "cast_specialization.hpp"  // Has to be imported first
+#include "opaque_vector.hpp"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -422,13 +423,6 @@ public:
     }
 };
 
-template<typename T>
-py::function getOverrideLocked(const T *this_ptr, const char *name)
-{
-    py::gil_scoped_acquire acquire;
-    return py::get_override(this_ptr, name);
-}
-
 template <class Base = GeneratorQueryHandler>
 class PyGeneratorQueryHandler : public PyQueryHandler<Base>
 {
@@ -438,12 +432,11 @@ public:
     // No type mismatch workaround required since base class is not called.
     ItemGenerator items(QueryContext &context) override
     {
-        auto fn_items_override = getOverrideLocked(this, "items");
-        if (fn_items_override)
-            // ! This move releases the py object, such that GIL is not required on destruction
-            return ItemGeneratorWrapper::generator(::move(fn_items_override), context);
-        else
-            throw runtime_error("Pure virtual function \"items\"");
+        py::gil_scoped_acquire a;
+        auto override = py::get_override(this, "items");
+        if (override)
+            return ItemGeneratorWrapper::generator(::move(override), context);
+        throw runtime_error("Pure virtual function \"items\"");
     }
 };
 
@@ -456,23 +449,28 @@ class PyGlobalQueryHandler : public PyGeneratorQueryHandler<Base>
     //
     // GeneratorQueryHandler   | declares pure
     // GlobalQueryHandler      | overrides "final"
-    // PyGeneratorQueryHandler | overrides "pure" on python side
+    // PyGeneratorQueryHandler | overrides "pure"
     // PyGlobalQueryHandler    | calls will throw "call to pure" error
     //
     ItemGenerator items(QueryContext &context) override
     {
-        auto fn_items_override = getOverrideLocked(this, "items");
-        if (fn_items_override)
-            // ! This move releases the py object, such that GIL is not required on destruction
-            return ItemGeneratorWrapper::generator(::move(fn_items_override), context);
-        else
-            return Base::items(context);
+        {
+            py::gil_scoped_acquire a;
+            auto override = py::get_override(this, "items");
+            if (override)
+                return ItemGeneratorWrapper::generator(::move(override), context);
+        }
+        return Base::items(context);
     }
 
-    // No type mismatch workaround required since base class is not called.
     vector<RankItem> rankItems(QueryContext &context) override
-    { PYBIND11_OVERRIDE_PURE(vector<RankItem>, Base, rankItems, &context); }
-
+    {
+        py::gil_scoped_acquire a;
+        auto override = py::get_override(this, "rankItems");
+        if (override)
+            return vectorFromPyObject<RankItem>(override(&context));
+        throw runtime_error("Pure virtual function \"rankItems\"");
+    }
 };
 
 
@@ -486,36 +484,20 @@ public:
     //
     // This is required due to the "final" quirks of the pybind trampoline chain
     //
-    // GeneratorQueryHandler   | declares pure
-    // RankedQueryHandler      | overrides "final"
-    // PyGeneratorQueryHandler | overrides "pure" on python side
-    // PyRankedQueryHandler    | calls will throw "call to pure" error
-    //
-    ItemGenerator items(QueryContext &context) override
-    {
-        auto fn_items_override = getOverrideLocked(this, "items");
-        if (fn_items_override)
-            // ! This move releases the py object, such that GIL is not required on destruction
-            return ItemGeneratorWrapper::generator(::move(fn_items_override), context);
-        else
-            return Base::items(context);
-    }
-
-    //
-    // This is required due to the "final" quirks of the pybind trampoline chain
-    //
-    // RankedQueryHandler   | declares pure
+    // GlobalQueryHandler   | declares pure
     // IndexQueryHandler    | overrides "final"
-    // PyRankedQueryHandler | overrides "pure" on python side
+    // PyGlobalQueryHandler | overrides "pure"
     // PyIndexQueryHandler  | calls will throw "call to pure" error
     //
     vector<RankItem> rankItems(QueryContext &context) override
     {
-        // PyBind does not suport passing reference, but instead tries to copy.
-        // Workaround by converting to pointer.
-        // This is needed because PYBIND11_OVERRIDE_PURE would introduce type mismatch.
-        PYBIND11_OVERRIDE_IMPL(vector<RankItem>, Base, "rankItems", &context);  // returns on success
-        return Base::rankItems(context);  // otherwise call base class
+        {
+            py::gil_scoped_acquire a;
+            auto override = py::get_override(this, "rankItems");
+            if (override)
+                return vectorFromPyObject<RankItem>(override(&context));
+        }
+        return Base::rankItems(context);
     }
 };
 

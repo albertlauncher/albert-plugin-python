@@ -607,6 +607,14 @@ class RankItem:
     """
 
 
+class RankItemList(list):
+    """
+    This opaque type is used to avoid unnecessary conversions between C++ vectors and python lists.
+
+    Unless you are dealing with huge amounts of items use regular lists of ``RankItems``.
+    """
+
+
 class IndexItem:
     """
     `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1util_1_1IndexItem.html>`_
