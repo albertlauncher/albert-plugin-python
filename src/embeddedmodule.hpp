@@ -6,8 +6,10 @@
 #include <pybind11/functional.h>
 #include <pybind11/native_enum.h>
 #include <pybind11/stl/filesystem.h>
+#include <pybind11/stl_bind.h>
 #include "cast_specialization.hpp"
 #include "trampolineclasses.hpp"
+#include "opaque_vector.hpp"
 
 #include <QDir>
 #include <albert/app.h>
@@ -18,13 +20,17 @@
 #include <albert/notification.h>
 #include <albert/plugin/applications.h>
 #include <albert/plugininstance.h>
+#include <albert/rankitem.h>
 #include <albert/standarditem.h>
 #include <albert/systemutil.h>
 #include <albert/usagescoring.h>
+#include <memory>
+#include <vector>
 extern applications::Plugin *apps;
 using namespace albert;
 using namespace std;
 
+PYBIND11_MAKE_OPAQUE(vector<RankItem>);
 
 /*
  * In this case a piece of python code is injected into C++ code.
@@ -193,6 +199,8 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
         ;
 
+    py::bind_vector<vector<RankItem>, py::smart_holder>(m, "RankItemList");
+
     // ------------------------------------------------------------------------
 
     py::classh<StandardItem, Item>(m, "StandardItem")
@@ -309,6 +317,12 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
              py::arg("extension_id"),
              py::arg("rank_items"))
 
+        .def("applied",
+             [](UsageScoring &self, const QString &extension_id, py::list &rank_items)
+             { return self.applied(extension_id, vectorFromPyList<RankItem>(rank_items)); },
+             py::arg("extension_id"),
+             py::arg("rank_items"))
+
         ;
 
     py::class_<QueryContext,
@@ -414,10 +428,22 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
              py::arg("context"))
 
         .def("lazySort",
+             [](GeneratorQueryHandler &self, py::list rank_items, const UsageScoring &usage_scoring)
+             { return PyItemGeneratorWrapper(self.lazySort(vectorFromPyList<RankItem>(rank_items), usage_scoring)); },
+             py::arg("rank_items"),
+             py::arg("usage_scoring"))
+
+        .def("lazySort",
              [](GeneratorQueryHandler &self, vector<RankItem> rank_items, const UsageScoring &usage_scoring)
              { return PyItemGeneratorWrapper(self.lazySort(::move(rank_items), usage_scoring)); },
              py::arg("rank_items"),
              py::arg("usage_scoring"))
+
+        .def("lazySort",
+             [](GeneratorQueryHandler *, py::list rank_items) {
+                 return PyItemGeneratorWrapper(GeneratorQueryHandler::lazySort(vectorFromPyList<RankItem>(rank_items)));
+             },
+             py::arg("rank_items"))
 
         .def("lazySort",
              [](GeneratorQueryHandler *, vector<RankItem> rank_items)
