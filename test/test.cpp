@@ -364,148 +364,183 @@ class Plugin(PluginInstance, GeneratorQueryHandler):
 
 void PythonTests::testAction()
 {
-    auto py_action = PyAction(
+    auto python = PyAction(
         "id"_a="test_action_id",
         "text"_a="test_action_text",
         "callable"_a=py::globals()["increment_test_action_variable"]
         );
+    auto native = python.cast<Action&>();
 
-    auto &action = py_action.cast<Action&>();
-
-    QCOMPARE(action.id, "test_action_id");
-    QCOMPARE(action.text, "test_action_text");
+    QCOMPARE(native.id, "test_action_id");
+    QCOMPARE(native.text, "test_action_text");
     QCOMPARE(py_get_test_action_variable().cast<int>(), 0);
-    action.function();
+    native.function();
     QCOMPARE(py_get_test_action_variable().cast<int>(), 1);
 }
 
 void PythonTests::testItem()
 {
-    py::dict locals;
+    // BINDINGS
 
-    py::exec(R"(
-class TestItem(Item):
-    def __init__(self, number:int):
-        Item.__init__(self)
-        self._number = number
+    class Native : public Item {
+        QString id() const override { return "id"; }
+        QString text() const override { return "text"; }
+        QString subtext() const override { return "subtext"; }
+        QString inputActionText() const override { return "input_action_text"; }
+        unique_ptr<Icon> icon() const override { return Icon::grapheme("!"); }
+        vector<Action> actions() const override { return {{"id", "text", []{} }}; }
+    };
+
+    auto python = py::cast(shared_ptr<Item>(new Native));
+
+    QCOMPARE(python.attr("id")().cast<QString>(), "id");
+    QCOMPARE(python.attr("text")().cast<QString>(), "text");
+    QCOMPARE(python.attr("subtext")().cast<QString>(), "subtext");
+    QCOMPARE(python.attr("inputActionText")().cast<QString>(), "input_action_text");
+    QVERIFY(python.attr("icon")().cast<unique_ptr<Icon>>());
+    QCOMPARE(py::len(python.attr("actions")()), 1);
+
+    // TRAMPOLINE (pure)
+
+    python = instantiateClass(R"(
+class Class(Item):
+    pass
+)");
+
+    auto native = python.cast<shared_ptr<Item>>();
+
+    QVERIFY_THROWS_EXCEPTION(runtime_error, native->id());
+    QVERIFY_THROWS_EXCEPTION(runtime_error, native->text());
+    QVERIFY_THROWS_EXCEPTION(runtime_error, native->subtext());
+    QVERIFY_THROWS_EXCEPTION(runtime_error, native->inputActionText());
+    QVERIFY_THROWS_EXCEPTION(runtime_error, native->icon());
+    QVERIFY_THROWS_EXCEPTION(runtime_error, native->actions());
+
+    // TRAMPOLINE
+
+    python = instantiateClass(R"(
+class Class(Item):
 
     def id(self):
-        return "id_" + str(self._number)
+        return "id"
 
     def text(self):
-        return "text_" + str(self._number)
+        return "text"
 
     def subtext(self):
-        return "subtext_" + str(self._number)
+        return "subtext"
 
     def inputActionText(self):
-        return "input_action_text_" + str(self._number)
+        return "inputActionText"
 
     def icon(self):
-        return Icon.grapheme(str(self._number))
+        return Icon.grapheme("!")
 
     def actions(self):
-        return [make_test_action()] * self._number
+        return [Action("id", "text", lambda: None)]
+)");
 
-class InvalidTestItem(Item):
-    pass
-)", py::globals(), locals);
+    native = python.cast<shared_ptr<Item>>();
 
-    auto py_item = locals["TestItem"](1);
-    auto item = py_item.cast<shared_ptr<Item>>();
-
-    test_test_item(item.get(), 1);
-    py_item = py::object();  // release python ownership
-    test_test_item(item.get(), 1);
-
-    py_item = locals["InvalidTestItem"]();
-    item = py_item.cast<shared_ptr<Item>>();
-
-    QVERIFY_THROWS_EXCEPTION(runtime_error, item->id());
-    QVERIFY_THROWS_EXCEPTION(runtime_error, item->text());
-    QVERIFY_THROWS_EXCEPTION(runtime_error, item->subtext());
-    QVERIFY_THROWS_EXCEPTION(runtime_error, item->inputActionText());
-    QVERIFY_THROWS_EXCEPTION(runtime_error, item->icon());
-    QVERIFY_THROWS_EXCEPTION(runtime_error, item->actions());
+    QCOMPARE(native->id(), "id");
+    QCOMPARE(native->text(), "text");
+    QCOMPARE(native->subtext(), "subtext");
+    QCOMPARE(native->inputActionText(), "inputActionText");
+    QVERIFY(native->icon());
+    auto actions = native->actions();
+    QCOMPARE(actions.size(), 1);
+    QCOMPARE(actions[0].id, "id");
+    QCOMPARE(actions[0].text, "text");
+    QVERIFY(actions[0].function);
 }
 
 void PythonTests::testStandardItem()
 {
-    auto py_test_standard_item = py_make_test_standard_item(1);
-    auto test_standard_item = py_test_standard_item.cast<shared_ptr<StandardItem>>();
+    // BINDINGS (Getters)
 
-    // Test C++ interface
+    auto native = makeTestItem(1);
+    auto python = py::cast(native);
 
-    test_test_item(test_standard_item.get(), 1);
+    QCOMPARE(python.attr("id").cast<QString>(), "id_1");
+    QCOMPARE(python.attr("text").cast<QString>(), "text_1");
+    QCOMPARE(python.attr("subtext").cast<QString>(), "subtext_1");
+    QCOMPARE(python.attr("input_action_text").cast<QString>(), "input_action_text_1");
+    QVERIFY(python.attr("icon_factory").cast<function<unique_ptr<Icon>()>>());
+    QCOMPARE(py::len(python.attr("actions")), 1);
 
+    // BINDINGS (Default constructor)
 
-    // Test Python property getters
+    python = PyStandardItem();
 
-    QCOMPARE(py_test_standard_item.attr("id").cast<QString>(), "id_1");
+    QCOMPARE(python.attr("id").cast<QString>(), "");
+    QCOMPARE(python.attr("text").cast<QString>(), "");
+    QCOMPARE(python.attr("subtext").cast<QString>(), "");
+    QCOMPARE(python.attr("input_action_text").cast<QString>(), "");
+    QVERIFY(!python.attr("icon_factory").cast<function<unique_ptr<Icon>()>>());
+    QCOMPARE(py::len(python.attr("actions")), 0);
 
-    QCOMPARE(py_test_standard_item.attr("text").cast<QString>(), "text_1");
+    // BINDINGS (Constructor arguments)
 
-    QCOMPARE(py_test_standard_item.attr("subtext").cast<QString>(), "subtext_1");
-
-    QCOMPARE(py_test_standard_item.attr("input_action_text").cast<QString>(), "input_action_text_1");
-
-    auto icon_factory = py_test_standard_item.attr("icon_factory").cast<function<unique_ptr<Icon>()>>();
-    QVERIFY(icon_factory);
-    QVERIFY(icon_factory() != nullptr);
-    QVERIFY(dynamic_cast<Icon*>(icon_factory().get()) != nullptr);
-
-    auto actions = py_test_standard_item.attr("actions").cast<vector<Action>>();
-    QCOMPARE(actions.size(), 1);
-    QCOMPARE(actions[0].id, "test_action_id");
-    QCOMPARE(actions[0].text, "test_action_text");
-
-
-    // Test Python property setters
-
-    py_test_standard_item.attr("id") = "x_item_id";
-    QCOMPARE(test_standard_item->id(), "x_item_id");
-
-    py_test_standard_item.attr("text") = "x_item_text";
-    QCOMPARE(test_standard_item->text(), "x_item_text");
-
-    py_test_standard_item.attr("subtext") = "x_item_subtext";
-    QCOMPARE(test_standard_item->subtext(), "x_item_subtext");
-
-    py_test_standard_item.attr("input_action_text") = "x_item_input_action_text";
-    QCOMPARE(test_standard_item->inputActionText(), "x_item_input_action_text");
-
-    py_test_standard_item.attr("icon_factory") = py::none();
-    icon_factory = py_test_standard_item.attr("icon_factory").cast<function<unique_ptr<Icon>()>>();
-    QVERIFY(!icon_factory);
-    py_test_standard_item.attr("icon_factory") = py_make_test_icon;
-    icon_factory = py_test_standard_item.attr("icon_factory").cast<function<unique_ptr<Icon>()>>();
-    QVERIFY(icon_factory);
-    QVERIFY(icon_factory() != nullptr);
-    QVERIFY(dynamic_cast<Icon*>(icon_factory().get()) != nullptr);
-
-    py_test_standard_item.attr("actions") = py::list();
-    actions = py_test_standard_item.attr("actions").cast<vector<Action>>();
-    QVERIFY(actions.empty());
     auto py_actions_list = py::list();
     py_actions_list.append(py_make_test_action());
-    py_actions_list.append(py_make_test_action());
-    py_test_standard_item.attr("actions") = py_actions_list;
-    actions = py_test_standard_item.attr("actions").cast<vector<Action>>();
-    QCOMPARE(actions.size(), 2);
-    QCOMPARE(actions[0].id, "test_action_id");
-    QCOMPARE(actions[1].id, "test_action_id");
+
+    python = PyStandardItem(
+        "id"_a="id",
+        "text"_a="text",
+        "subtext"_a="subtext",
+        "icon_factory"_a=py_make_test_icon,
+        "actions"_a=py_actions_list,
+        "input_action_text"_a="input_action_text"_s
+        );
+
+    QCOMPARE(python.attr("id").cast<QString>(), "id");
+    QCOMPARE(python.attr("text").cast<QString>(), "text");
+    QCOMPARE(python.attr("subtext").cast<QString>(), "subtext");
+    QCOMPARE(python.attr("input_action_text").cast<QString>(), "input_action_text");
+    QVERIFY(python.attr("icon_factory").cast<function<unique_ptr<Icon>()>>());
+    QCOMPARE(py::len(python.attr("actions")), 1);
+
+    // BINDINGS (Setters)
+
+    python = py_make_test_standard_item;
+
+    python.attr("id") = "1";
+    python.attr("text") = "2";
+    python.attr("subtext") = "3";
+    python.attr("input_action_text") = "4";
+    python.attr("icon_factory") = py::none();
+    python.attr("actions") = py::list();
+
+    QCOMPARE(python.attr("id").cast<QString>(), "1");
+    QCOMPARE(python.attr("text").cast<QString>(),  "2");
+    QCOMPARE(python.attr("subtext").cast<QString>(),  "3");
+    QCOMPARE(python.attr("input_action_text").cast<QString>(),  "4");
+    QVERIFY(!python.attr("icon_factory").cast<function<unique_ptr<Icon>()>>());
+    QCOMPARE(py::len(python.attr("actions")), 0);
+
+    // TRAMPOLINE
+
+    python = py_make_test_standard_item(1);
+    native = python.cast<shared_ptr<Item>>();
+    testTestItem(native.get(), 1);
 }
 
 void PythonTests::testRankItem()
 {
-    auto py_test_standard_item = py_make_test_standard_item(1);
-    auto py_test_rank_item = PyRankItem("item"_a=py_test_standard_item,
-                                        "score"_a=0.5);
+    auto python = PyRankItem("item"_a=py_make_test_standard_item(0), "score"_a=0.5);
+    auto &native = python.cast<RankItem&>();
 
-    auto rank_item = py_test_rank_item.cast<unique_ptr<RankItem>>();  // disowns
+    QCOMPARE(python.attr("item").cast<shared_ptr<Item>>()->id(), "id_0");
+    QCOMPARE(python.attr("score").cast<double>(), 0.5);
 
-    test_test_item(rank_item->item.get(), 1);
-    QCOMPARE(rank_item->score, 0.5);
+    python.attr("item") = py_make_test_standard_item(1);
+    python.attr("score") = 1.0;
+
+    QCOMPARE(python.attr("item").cast<shared_ptr<Item>>()->id(), "id_1");
+    QCOMPARE(python.attr("score").cast<double>(), 1.0);
+
+    QCOMPARE(native.item->id(), "id_1");
+    QCOMPARE(native.score, 1.0);
 }
 
 void PythonTests::testIndexItem()
