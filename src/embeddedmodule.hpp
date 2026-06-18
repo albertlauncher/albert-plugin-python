@@ -29,8 +29,7 @@ using namespace std;
 /*
  * In this case a piece of python code is injected into C++ code.
  * The GIL has to be locked whenever the code is touched, i.e. on
- * execution and deletion. Further exceptions thrown from python
- * have to be catched.
+ * execution and deletion.
  */
 struct GilAwareFunctor {
     py::object callable;
@@ -52,11 +51,7 @@ struct GilAwareFunctor {
     }
     void operator()() {
         py::gil_scoped_acquire acquire;
-        try {
-            callable();
-        } catch (exception &e) {
-            WARN << e.what();
-        }
+        callable();
     }
 };
 
