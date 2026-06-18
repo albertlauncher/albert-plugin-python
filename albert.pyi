@@ -79,6 +79,14 @@ Changelog
     - Rename ``isValid`` to ``is_valid``
   - Class ``RankItem``
     - Add property access again (has been removed in 4.0)
+  - Class ``GeneratorQueryHandler``
+    - Remove static method ``lazySort(rank_items: List[RankItem]) -> Generator[List[Item]]``
+    - Add method ``lazySort(rank_items: List[RankItem], usage_scoring: UsageScoring | None = None)
+      -> Generator[List[Item]]:``
+  - Add opaque type ``RankItemList``
+    - This type is for performance only and should be invisible to plugin developers which should
+      prefer to use pythonic lists of ``RankItem``. The opaque type is used to avoid unnecessary
+      conversions between C++ and python lists.
 
 - ``5.0``
 
@@ -802,10 +810,12 @@ class GeneratorQueryHandler(QueryHandler):
         Note: Executed in a background thread.
         """
 
-    @staticmethod
-    def lazySort(rank_items: List[RankItem]) -> Generator[List[Item]]:
+    def lazySort(self,
+                 rank_items: List[RankItem],
+                 usage_scoring: UsageScoring | None = None
+                 ) -> Generator[List[Item]]:
         """
-        Yields **rank_items** lazily sorted.
+        Yields **rank_items** lazily sorted with **usage_scoring** applied if not ``None``.
         """
 
 

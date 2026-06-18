@@ -413,12 +413,16 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
              { return PyItemGeneratorWrapper(self.items(ctx)); },
              py::arg("context"))
 
-        .def_static("lazySort",
-                    [](vector<RankItem> rank_items) {
-                        // FIXME: This introces copies when passing language boundaries
-                        return PyItemGeneratorWrapper(GeneratorQueryHandler::lazySort(::move(rank_items)));
-                    },
-                    py::arg("rank_items"))
+        .def("lazySort",
+             [](GeneratorQueryHandler &self, vector<RankItem> rank_items, const UsageScoring &usage_scoring)
+             { return PyItemGeneratorWrapper(self.lazySort(::move(rank_items), usage_scoring)); },
+             py::arg("rank_items"),
+             py::arg("usage_scoring"))
+
+        .def("lazySort",
+             [](GeneratorQueryHandler *, vector<RankItem> rank_items)
+             { return PyItemGeneratorWrapper(GeneratorQueryHandler::lazySort(::move(rank_items))); },
+             py::arg("rank_items"))
 
         ;
 
