@@ -77,6 +77,8 @@ Changelog
   - Class ``QueryContext``
     - Rename ``usageScoring`` to ``usage_scoring``
     - Rename ``isValid`` to ``is_valid``
+  - Class ``RankItem``
+    - Add property access again (has been removed in 4.0)
 
 - ``5.0``
 
@@ -585,6 +587,16 @@ class RankItem:
                  item: Item,
                  score: float|Match):
         ...
+
+    item: Item
+    """
+    The item.
+    """
+
+    score: float
+    """
+    The score of the item.
+    """
 
 
 class IndexItem:
