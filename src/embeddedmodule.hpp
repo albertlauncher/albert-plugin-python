@@ -76,11 +76,11 @@ class PyItemGeneratorWrapper
 
 public:
     explicit PyItemGeneratorWrapper(ItemGenerator g)
-        : gen(std::move(g)) {}
+        : gen(::move(g)) {}
 
     PyItemGeneratorWrapper &iter() { return *this; }
 
-    std::vector<std::shared_ptr<albert::Item>> next()
+    vector<shared_ptr<Item>> next()
     {
         if (it)
             if (it == gen.end())
@@ -154,6 +154,8 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     py::classh<Item, PyItemTrampoline>(m, "Item")
 
+        // Actually should not be constructible but pybind
+        // otherwise requires a contructor in subclasses
         .def(py::init<>())
 
         .def("id",
@@ -299,23 +301,6 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     // ------------------------------------------------------------------------
 
-    py::class_<Extension,
-               PyExtension<>,
-               unique_ptr<Extension, py::nodelete>
-               >(m, "Extension")
-
-        .def("id",
-             &Extension::id)
-
-        .def("name",
-             &Extension::name)
-
-        .def("description",
-             &Extension::description)
-        ;
-
-    // ------------------------------------------------------------------------
-
     py::class_<UsageScoring>(m, "UsageScoring")
 
         .def("applied",
@@ -341,48 +326,30 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
         .def_property_readonly("usage_scoring",
                                &QueryContext::usageScoring)
+
         ;
 
-    // py::class_<QueryResults>(m, "QueryResults")
+    // ------------------------------------------------------------------------
 
-    //     .def("add",
-    //          [](QueryResults &self, const shared_ptr<Item> &item){ self.add(item); })
+    py::class_<Extension,
+               PyExtension<>,
+               unique_ptr<Extension, py::nodelete>
+               >(m, "Extension")
 
-    //     .def("add",
-    //          [](QueryResults &self, const vector<shared_ptr<Item>> &items){ self.add(items); })
-    //     ;
+        .def(py::init<>())
 
-    // py::classh<QueryExecution,
-    //            PyQueryExecution
-    //            >(m, "QueryExecution")
+        .def("id",
+             &Extension::id)
 
-    //     .def(py::init<albert::QueryContext &>(),
-    //          py::arg("context"))
+        .def("name",
+             &Extension::name)
 
-    //     .def_readonly("id",
-    //                   &QueryExecution::id)
+        .def("description",
+             &Extension::description)
+        ;
 
-    //     .def_property_readonly("context",
-    //                            [](const QueryExecution &self){ return &self.context; },
-    //                            py::return_value_policy::reference)
+    // ------------------------------------------------------------------------
 
-    //     .def_property_readonly("results",
-    //                            [](const QueryExecution &self){ return &self.results; },
-    //                            py::return_value_policy::reference)
-
-    //     // .def("cancel",
-    //     //      &QueryExecution::cancel)
-
-    //     // .def("fetchMore",
-    //     //      &QueryExecution::fetchMore)
-
-    //     // .def("canFetchMore",
-    //     //      &QueryExecution::canFetchMore)
-
-    //     // .def("isActive",
-    //     //      &QueryExecution::isActive)
-
-    //     ;
 
     py::class_<QueryHandler,
                Extension,
@@ -469,9 +436,8 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
         // BASE IMPLEMENTATION
         .def("items",
-             [](GlobalQueryHandler &self, QueryContext *ctx) {
-                 return PyItemGeneratorWrapper(self.items(*ctx));
-             },
+             [](GlobalQueryHandler &self, QueryContext &ctx)
+             { return PyItemGeneratorWrapper(self.items(ctx)); },
              py::arg("context"))
 
         // PURE VIRTUAL
@@ -532,6 +498,7 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
         .def(py::init<>())
 
+        // PURE VIRTUAL
         .def("fallbacks",
              &FallbackHandler::fallbacks,
              py::arg("query_string"))
