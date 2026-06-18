@@ -9,25 +9,40 @@ private slots:
 
     void initTestCase();
 
-    void testBasicPluginInstance();
+
+    void testPluginInstance();
+
     void testExtensionPluginInstance();
 
+
     void testAction();
+
     void testItem();
+
     void testStandardItem();
+
     void testRankItem();
+
     void testIndexItem();
-    void testMatcher();
+
     void testIconFactories();
 
-    void testQueryContext();
-    // void testQueryResults();
-    // void testQueryExecution();
 
-    // void testQueryHandler();
+    void testUsageScoring();
+
+    void testMatcher();
+
+    void testQueryContext();
+
+
+    void testExtension();
+
     void testGeneratorQueryHandler();
+
     void testGlobalQueryHandler();
+
     void testIndexQueryHandler();
+
     void testFallbackQueryHandler();
 
 };

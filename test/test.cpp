@@ -12,7 +12,6 @@
 #include "albert/icon.h"
 #include "albert/indexqueryhandler.h"
 #include "albert/item.h"
-#include "albert/logging.h"
 #include "albert/matcher.h"
 #include "albert/plugininstance.h"
 #include "albert/pluginloader.h"
@@ -27,8 +26,8 @@
 #include <QTimer>
 #include <albert/indexqueryhandler.h>
 using namespace albert;
-using namespace std;
 using namespace py::literals;
+using namespace std;
 QTEST_MAIN(PythonTests)
 
 struct MockQueryContext : public QueryContext
@@ -41,7 +40,6 @@ struct MockQueryContext : public QueryContext
         , query_(string)
         , is_valid_(true)
     {
-        usage_scoring_.usage_scores = make_shared<const std::unordered_map<ItemKey, double>>();
     }
 
     QueryHandler *handler_;
@@ -163,8 +161,23 @@ def make_test_standard_item(number:int):
     )
 )";
 
-// Item has to be tested a lot while being passed around. Make it a oneliner.
-static void test_test_item(Item *item, int number)
+static shared_ptr<Item> makeTestItem(int number)
+{
+    return StandardItem::make(
+        "id_" + QString::number(number),
+        "text_" + QString::number(number),
+        "subtext_" + QString::number(number),
+        []{ return Icon::grapheme("!"); },
+        {{
+            "test_action_id",
+            "test_action_text",
+            []{}
+        }},
+        "input_action_text_" + QString::number(number)
+    );
+}
+
+static void testTestItem(Item *item, int number)
 {
     QCOMPARE(item->id(), "id_" + QString::number(number));
     QCOMPARE(item->text(), "text_" + QString::number(number));
@@ -175,6 +188,17 @@ static void test_test_item(Item *item, int number)
     QVERIFY(dynamic_cast<Icon*>(icon.get()) != nullptr);
     QCOMPARE(item->actions().size(), number);
 }
+
+template <typename... Args>
+py::object instantiateClass(const char *py_src, Args&&... args)
+{
+    py::dict locals;
+    py::exec(py_src, py::globals(), locals);
+    return locals["Class"](std::forward<Args>(args)...);
+}
+
+//==================================================================================================
+//==================================================================================================
 
 void PythonTests::initTestCase()
 {
@@ -208,7 +232,7 @@ void PythonTests::initTestCase()
     py_make_test_standard_item = py::globals()["make_test_standard_item"];
 }
 
-void PythonTests::testBasicPluginInstance()
+void PythonTests::testPluginInstance()
 {
     py::dict locals;
 
@@ -677,339 +701,186 @@ void PythonTests::testIconFactories()
     QVERIFY(py_icon.cast<unique_ptr<Icon>>() != nullptr);
 }
 
+void PythonTests::testUsageScoring()
+{
+    UsageScoring usage_scoring;
+    auto py_usage_scoring = py::cast(&usage_scoring);
+
+    auto py_rank_items0 = py::module_::import("albert").attr("RankItemList")();
+    py_rank_items0.attr("append")(RankItem{makeTestItem(0), 1.0});
+    py_rank_items0.attr("append")(RankItem{makeTestItem(1), 0.0});
+
+    QCOMPARE(py::len(py_rank_items0), 2);
+    QCOMPARE(py_rank_items0.attr("__getitem__")(0).attr("score").cast<double>(), 1.0);
+    QCOMPARE(py_rank_items0.attr("__getitem__")(1).attr("score").cast<double>(), 0.0);
+
+    auto py_rank_items1 = py_usage_scoring.attr("applied")("test_extension", py_rank_items0);
+
+    QCOMPARE(py::len(py_rank_items0), 0);  // consumed
+    QCOMPARE(py::len(py_rank_items1), 2);
+    QCOMPARE(py_rank_items1.attr("__getitem__")(0).attr("score").cast<double>(), 1.0);
+    QCOMPARE(py_rank_items1.attr("__getitem__")(1).attr("score").cast<double>(), 0.0);
+}
+
 void PythonTests::testQueryContext()
 {
     auto handler = MockHandler();
-    auto ctx = MockQueryContext(&handler, "test_trigger", "test_query");
+    auto native = MockQueryContext(&handler, "trigger", "query");
+    py::object python = py::cast(static_cast<QueryContext*>(&native));
 
-    py::object py_ctx = py::cast(static_cast<QueryContext*>(&ctx));
-    // QCOMPARE(py_query.attr("handler")().cast<py::object>().ptr(), &handler);
-    QCOMPARE(py_ctx.attr("trigger").cast<QString>(), "test_trigger");
-    QCOMPARE(py_ctx.attr("query").cast<QString>(), "test_query");
-    QCOMPARE(py_ctx.attr("is_valid").cast<bool>(), true);
+    QCOMPARE(python.attr("trigger").cast<QString>(), "trigger");
+    QCOMPARE(python.attr("query").cast<QString>(), "query");
+    QCOMPARE(python.attr("is_valid").cast<bool>(), true);
+    QVERIFY(python.attr("usage_scoring").cast<UsageScoring*>());
 }
 
-// void PythonTests::testQueryResults()
-// {
-//     auto handler = MockHandler();
-//     auto query = MockQueryContext(&handler);
-//     auto cpp = QueryResults(query);
-//     auto py = py::cast(&cpp);
+//==================================================================================================
 
-//     QCOMPARE(cpp.count(), 0);
-
-//     py.attr("add")(py_make_test_standard_item(1));
-
-//     QCOMPARE(cpp.count(), 1);
-
-//     py::list l;
-//     l.append(py_make_test_standard_item(2));
-//     l.append(py_make_test_standard_item(3));
-//     py.attr("add")(l);
-
-//     QCOMPARE(cpp.count(), 3);
-
-//     test_test_item(cpp.operator[](0).item.get(), 1);
-//     test_test_item(cpp.operator[](1).item.get(), 2);
-//     test_test_item(cpp.operator[](2).item.get(), 3);
-// }
-
-// void PythonTests::testQueryExecution()
-// {
-//     py::dict locals;
-
-//     py::exec(R"(
-// class TestQueryExecution(QueryExecution):
-
-//     def __init__(self, query):
-//         QueryExecution.__init__(self, query)
-//         self.active = True
-//         self.can_fetch_more = True
-
-//     def cancel(self):
-//         self.active = False
-
-//     def fetchMore(self):
-//         self.can_fetch_more = False
-
-//     def canFetchMore(self):
-//         return self.can_fetch_more
-
-//     def isActive(self):
-//         return self.active
-// )", py::globals(), locals);
-
-//     auto handler = MockHandler();
-//     auto ctx = MockQueryContext(&handler);
-//     // auto py_query = py::cast(&query, py::return_value_policy::reference);
-
-//     auto py_inst = locals["TestQueryExecution"](static_cast<QueryContext*>(&ctx));
-//     auto *cpp_inst = py_inst.cast<QueryExecution*>();
-
-//     QCOMPARE(py_inst.attr("id").cast<uint>(), 0);
-//     QCOMPARE(cpp_inst->id, 0);
-
-//     // Just test access. Types have dedicated test cases.
-//     QVERIFY(py::isinstance(py_inst.attr("query"), albert_module.attr("Query")));
-//     QVERIFY(py::isinstance(py_inst.attr("results"), albert_module.attr("QueryResults")));
-
-//     QCOMPARE(py_inst.attr("active").cast<bool>(), true);
-//     QCOMPARE(py_inst.attr("isActive")().cast<bool>(), true);
-//     QCOMPARE(cpp_inst->isActive(), true);
-//     cpp_inst->cancel();
-//     QCOMPARE(py_inst.attr("active").cast<bool>(), false);
-//     QCOMPARE(py_inst.attr("isActive")().cast<bool>(), false);
-//     QCOMPARE(cpp_inst->isActive(), false);
-
-//     QCOMPARE(py_inst.attr("can_fetch_more").cast<bool>(), true);
-//     QCOMPARE(py_inst.attr("canFetchMore")().cast<bool>(), true);
-//     QCOMPARE(cpp_inst->canFetchMore(), true);
-//     cpp_inst->fetchMore();
-//     QCOMPARE(py_inst.attr("can_fetch_more").cast<bool>(), false);
-//     QCOMPARE(py_inst.attr("canFetchMore")().cast<bool>(), false);
-//     QCOMPARE(cpp_inst->canFetchMore(), false);
-
-//     // emit activeChanged?
-// }
-
-
-template<typename T>
-tuple<py::object, T*> makeTestClass(const char *py_src, const char *class_name = "Handler")
+static void standardExtensionBindingsTest(py::object object)
 {
-    py::dict locals;
-    py::exec(py_src, py::globals(), locals);
-    auto py_inst = locals[class_name]();
-    auto *cpp_inst = py_inst.cast<T*>();
-    return {py_inst, cpp_inst};
+    QCOMPARE(object.attr("id")().cast<QString>(), "id");
+    QCOMPARE(object.attr("name")().cast<QString>(), "name");
+    QCOMPARE(object.attr("description")().cast<QString>(), "description");
 }
 
-static void testPythonExtensionApi(py::object object)
+static void standardExtensionTrampolineTest(Extension *extension)
 {
-    QCOMPARE(object.attr("id")().cast<QString>(), "test_id");
-    QCOMPARE(object.attr("name")().cast<QString>(), "test_name");
-    QCOMPARE(object.attr("description")().cast<QString>(), "test_description");
+    QCOMPARE(extension->id(), "id");
+    QCOMPARE(extension->name(), "name");
+    QCOMPARE(extension->description(), "description");
 }
 
-static void testPythonQueryHandlerApi(py::object object)
+void PythonTests::testExtension()
 {
-    QCOMPARE(object.attr("synopsis")("_test").cast<QString>(), "test_synopsis_test");
+    // BINDINGS
+
+    class : public Extension {
+        QString id() const override { return "id"; }
+        QString name() const override { return "name"; }
+        QString description() const override { return "description"; }
+    } impl;
+
+    auto python = py::cast((Extension*)&impl);  // IMPORTANT! type must be base type
+    standardExtensionBindingsTest(python);
+
+    // TRAMPOLINE
+
+    python = instantiateClass(R"(
+class Class(Extension):
+
+    def id(self):
+        return "id"
+
+    def name(self):
+        return "name"
+
+    def description(self):
+        return "description"
+)");
+
+    auto native = python.cast<Extension*>();
+    standardExtensionTrampolineTest(native);
+}
+
+//==================================================================================================
+
+static void standardGeneratorQueryHandlerBindingsTest(py::object object)
+{
+    QCOMPARE(object.attr("synopsis")("test").cast<QString>(), "synopsis_test");
+
     QCOMPARE(object.attr("allowTriggerRemap")().cast<bool>(), false);
-    QCOMPARE(object.attr("defaultTrigger")().cast<QString>(), "test_trigger");
+
+    QCOMPARE(object.attr("defaultTrigger")().cast<QString>(), "trigger");
+
+    // QVERIFY_THROWS_EXCEPTION(exception, object.attr("setTrigger")(""));
+
     QCOMPARE(object.attr("supportsFuzzyMatching")().cast<bool>(), true);
+
+    // QVERIFY_THROWS_EXCEPTION(exception, object.attr("setFuzzyMatching")(true));
+
+    auto ctx = make_unique<MockQueryContext>(object.cast<QueryHandler*>(), "", "x");
+    auto gen = object.attr("items")((QueryContext*)ctx.get());
+    auto list = gen.attr("__next__")();
+    QCOMPARE(py::len(list), 1);
+    QCOMPARE(list.cast<vector<shared_ptr<Item>>>()[0]->id(), "id_0");
+    QVERIFY_THROWS_EXCEPTION(py::error_already_set, gen.attr("__next__")());
+
+    auto rank_items = py::list();
+    rank_items.append(PyRankItem("item"_a=makeTestItem(0), "score"_a=.0));
+    rank_items.append(PyRankItem("item"_a=makeTestItem(1), "score"_a=1.));
+
+    auto generator = object.attr("lazySort")(rank_items, ctx->usageScoring());
+    auto items = generator.attr("__next__")().cast<vector<shared_ptr<Item>>>();
+    QCOMPARE(items[0]->id(), "id_1");
+    QCOMPARE(items[1]->id(), "id_0");
+    QCOMPARE(items.size(), 2);
+
+    generator = object.attr("lazySort")(rank_items);
+    items = generator.attr("__next__")().cast<vector<shared_ptr<Item>>>();
+    QCOMPARE(items[0]->id(), "id_1");
+    QCOMPARE(items[1]->id(), "id_0");
+    QCOMPARE(items.size(), 2);
 }
 
-static void testCppExtensionApi(Extension *extension)
+static void standardGeneratorQueryHandlerTrampolineTest(GeneratorQueryHandler *handler)
 {
-    QCOMPARE(extension->id(), "test_id");
-    QCOMPARE(extension->name(), "test_name");
-    QCOMPARE(extension->description(), "test_description");
-}
+    QCOMPARE(handler->defaultTrigger(), "trigger");
 
-static void testCppQueryHandlerApi(QueryHandler *handler)
-{
-    QCOMPARE(handler->defaultTrigger(), "test_trigger");
-    QCOMPARE(handler->synopsis("_test"), "test_synopsis_test");
+    QCOMPARE(handler->synopsis("test"), "synopsis_test");
+
     QCOMPARE(handler->allowTriggerRemap(), false);
+
     QCOMPARE(handler->supportsFuzzyMatching(), true);
-}
-
-// void PythonTests::testQueryHandler()
-// {
-//     const auto *py_init = R"(
-// class TestQueryHandler(QueryHandler):
-
-//     def id(self):
-//         return "test_id"
-
-//     def name(self):
-//         return "test_name"
-
-//     def description(self):
-//         return "test_description"
-
-//     def synopsis(self, query):
-//         return "test_synopsis" + query
-
-//     def defaultTrigger(self):
-//         return "test_trigger"
-
-//     def allowTriggerRemap(self):
-//         return False
-
-//     def supportsFuzzyMatching(self):
-//         return True
-
-//     #def execution(self, query):
-
-//     #    class TestQueryExecution(QueryExecution):
-
-//     #        def __init__(self, query):
-//     #            QueryExecution.__init__(self, query)
-//     #            self.step = 0
-
-//     #        def cancel(self):
-//     #            self.step = -1
-
-//     #        def fetchMore(self):
-//     #            if self.step < 0:
-//     #                return
-//     #            self.results.add(make_test_standard_item(self.step))
-//     #            self.step += 1
-//     #            if self.step == 2:
-//     #                self.step = -1
-
-//     #        def canFetchMore(self):
-//     #            return not self.step < 0
-
-//     #        def isActive(self):
-//     #            return False  # well no asynchronicity in python yet
-
-//     #    return TestQueryExecution(query)
-// )";
-
-//     py::dict locals;
-//     py::exec(py_init, py::globals(), locals);
-//     auto py_inst = locals["TestQueryHandler"]();
-//     auto *cpp_inst = py_inst.cast<QueryHandler*>();
-//     QVERIFY(cpp_inst != nullptr);
-
-//     testPythonExtensionApi(py_inst);
-//     testPythonQueryHandlerApi(py_inst);
-
-//     py::gil_scoped_release release;
-//     testCppExtensionApi(cpp_inst);
-//     testCppQueryHandlerApi(cpp_inst);
-
-//     // auto query = MockQueryContext(cpp_inst);
-//     // auto exec = cpp_inst->execution(query);
-//     // QVERIFY(exec.get() != nullptr);
-
-//     // // empty in the beginning
-//     // QCOMPARE(exec->results.count(), 0);
-//     // QCOMPARE(exec->isActive(), false);
-//     // QCOMPARE(exec->canFetchMore(), true);
-
-//     // // first
-//     // exec->fetchMore();
-//     // QCOMPARE(exec->results.count(), 1);
-//     // QCOMPARE(exec->isActive(), false);
-//     // QCOMPARE(exec->canFetchMore(), true);
-
-//     // // sencond (end)
-//     // exec->fetchMore();
-//     // QCOMPARE(exec->results.count(), 2);
-//     // QCOMPARE(exec->isActive(), false);
-//     // QCOMPARE(exec->canFetchMore(), false);
-
-//     // // test noop
-//     // exec->fetchMore();
-//     // QCOMPARE(exec->isActive(), false);
-//     // QCOMPARE(exec->canFetchMore(), false);
-//     // QCOMPARE(exec->results.count(), 2);
-
-//     // exec->cancel();
-
-//     // QCOMPARE(exec->isActive(), false);
-//     // QCOMPARE(exec->canFetchMore(), false);
-//     // QCOMPARE(exec->results.count(), 2);
-
-//     // test_test_item(exec->results[0].item.get(), 0);
-//     // test_test_item(exec->results[1].item.get(), 1);
-// }
-
-static void testCppQueryExecution(QueryHandler* handler,
-                                  vector<vector<int>> expected,
-                                  const char* query = "")
-{
-    auto ctx = MockQueryContext(handler, "", query);
-
-    auto exec = handler->execution(ctx);
-
-    QEventLoop loop;
-    QObject::connect(exec.get(), &QueryExecution::activeChanged, exec.get(), [&] {
-        if (!exec->isActive())
-            loop.quit();
-    });
-
-    uint item_count = 0;
-
-    exec->fetchMore();
-    if(exec->isActive())
-    {
-        QCOMPARE(exec->results.count(), item_count);
-        loop.exec();
-    }
-
-    for (const auto &batch : expected)
-    {
-        for (size_t i = 0; i < batch.size(); ++i)
-            test_test_item(exec->results[item_count + i].item.get(), batch[i]);
-        item_count += batch.size();
-        QCOMPARE(exec->results.count(), item_count);
-        exec->fetchMore();
-        loop.exec();
-    }
-
-    QCOMPARE(exec->results.count(), item_count);
-    QCOMPARE(exec->canFetchMore(), false);
-}
-
-static void testCppItemGenerator(GeneratorQueryHandler* handler,
-                                 vector<vector<int>> expected,
-                                 const char* query = "")
-{
-    auto ctx = MockQueryContext(handler, "", query);
 
     vector<vector<shared_ptr<Item>>> items;
+    auto ctx = MockQueryContext(handler, "", "x");
     for (auto batch : handler->items(ctx))
         items.emplace_back(batch);
 
-    QCOMPARE(items.size(), expected.size());  // compare number of batches
-    for (size_t b = 0; b < items.size(); ++b)
-    {
-        QCOMPARE(items[b].size(), expected[b].size());  // compare size of batches
-        for (size_t i = 0; i < items[b].size(); ++i)
-            test_test_item(items[b][i].get(), expected[b][i]);  // compare items
-    }
-}
-
-static void testCppRankItems(GlobalQueryHandler* handler,
-                             vector<pair<int, double>> expected,
-                             const char* query = "")
-{
-    auto ctx = MockQueryContext(handler, "", query);
-    auto rank_items = handler->rankItems(ctx);
-    ranges::sort(rank_items, greater());
-    // ranges::sort(rank_items, greater(), &pair<int, double>::second);
-
-    QCOMPARE(rank_items.size(), expected.size());
-
-    for (size_t i = 0; i < rank_items.size(); ++i)
-    {
-        test_test_item(rank_items[i].item.get(), expected[i].first);
-        QCOMPARE(rank_items[i].score, expected[i].second);
-    }
+    QCOMPARE(items.size(), 1);
+    QCOMPARE(items[0].size(), 1);
+    QCOMPARE(items[0][0]->id(), "id_0");
 }
 
 void PythonTests::testGeneratorQueryHandler()
 {
-    auto [py_inst, cpp_inst] = makeTestClass<GeneratorQueryHandler>(R"(
-class Handler(GeneratorQueryHandler):
+    // BINDINGS
+
+    class : public GeneratorQueryHandler {
+        QString id() const override { return "id"; }
+        QString name() const override { return "name"; }
+        QString description() const override { return "description"; }
+        QString synopsis(const QString& query) const override { return "synopsis_" + query; }
+        QString defaultTrigger() const override { return "trigger"; }
+        bool allowTriggerRemap() const override { return false; }
+        bool supportsFuzzyMatching() const override { return true; }
+        ItemGenerator items(QueryContext&) override { co_yield {makeTestItem(0)}; }
+    } impl;
+
+    auto python = py::cast((GeneratorQueryHandler*)&impl);  // IMPORTANT! type must be base type
+
+    standardExtensionBindingsTest(python);
+    standardGeneratorQueryHandlerBindingsTest(python);
+
+    // TRAMPOLINE
+
+    python = instantiateClass(R"(
+class Class(GeneratorQueryHandler):
 
     def id(self):
-        return "test_id"
+        return "id"
 
     def name(self):
-        return "test_name"
+        return "name"
 
     def description(self):
-        return "test_description"
+        return "description"
 
     def synopsis(self, query):
-        return "test_synopsis" + query
+        return "synopsis_" + query
 
     def defaultTrigger(self):
-        return "test_trigger"
+        return "trigger"
 
     def allowTriggerRemap(self):
         return False
@@ -1017,42 +888,81 @@ class Handler(GeneratorQueryHandler):
     def supportsFuzzyMatching(self):
         return True
 
+    def setFuzzyMatching(self, fuzzy):
+        pass
+
     def items(self, context):
-        yield [make_test_standard_item(1)]
-        yield [make_test_standard_item(1), make_test_standard_item(2)]
-        yield [make_test_standard_item(1), make_test_standard_item(2), make_test_standard_item(3)]
+        yield [make_test_standard_item(0)]
 )");
+    auto native = python.cast<GeneratorQueryHandler*>();
 
-    testPythonExtensionApi(py_inst);
-    testPythonQueryHandlerApi(py_inst);
+    standardExtensionTrampolineTest(native);
+    standardGeneratorQueryHandlerTrampolineTest(native);
+}
 
-    py::gil_scoped_release release;
+//==================================================================================================
 
-    testCppExtensionApi(cpp_inst);
-    testCppQueryHandlerApi(cpp_inst);
-    testCppQueryExecution(cpp_inst, {{1}, {1, 2}, {1, 2, 3}});
-    testCppItemGenerator(cpp_inst,  {{1}, {1, 2}, {1, 2, 3}});
+static void standardGlobalQueryHandlerBindingsTest(py::object object)
+{
+    // QVERIFY_THROWS_EXCEPTION(exception, object.attr("rankItems")(true));
+
+    auto ctx = make_unique<MockQueryContext>(object.cast<QueryHandler*>(), "", "x");
+    py::list list = object.attr("rankItems")((QueryContext*)ctx.get());
+    QCOMPARE(py::len(list), 1);
+    auto rank_item = list[0].cast<RankItem>();
+    QCOMPARE(rank_item.item->id(), "id_0");
+    QCOMPARE(rank_item.score, 1.);
+}
+
+static void standardGlobalQueryHandlerTrampolineTest(GlobalQueryHandler *handler)
+{
+    auto ctx = MockQueryContext(handler, "", "x");
+    auto rank_items = handler->rankItems(ctx);
+    QCOMPARE(rank_items.size(), 1);
+    QCOMPARE(rank_items[0].item->id(), "id_0");
 }
 
 void PythonTests::testGlobalQueryHandler()
 {
-    auto [py_inst, cpp_inst] = makeTestClass<GlobalQueryHandler>(R"(
-class Handler(GlobalQueryHandler):
+    // BINDINGS
+
+    class : public GlobalQueryHandler {
+        QString id() const override { return "id"; }
+        QString name() const override { return "name"; }
+        QString description() const override { return "description"; }
+        QString synopsis(const QString& query) const override { return "synopsis_" + query; }
+        QString defaultTrigger() const override { return "trigger"; }
+        bool allowTriggerRemap() const override { return false; }
+        bool supportsFuzzyMatching() const override { return true; }
+        vector<RankItem> rankItems(QueryContext &) override
+        { return {RankItem(makeTestItem(0), 1.)}; }
+    } impl;
+
+    auto python = py::cast((GlobalQueryHandler*)&impl);  // IMPORTANT! type must be base type
+
+    standardExtensionBindingsTest(python);
+    standardGeneratorQueryHandlerBindingsTest(python);
+    standardGlobalQueryHandlerBindingsTest(python);
+
+    // TRAMPOLINE
+
+    python = instantiateClass(R"(
+class Class(GlobalQueryHandler):
 
     def id(self):
-        return "test_id"
+        return "id"
 
     def name(self):
-        return "test_name"
+        return "name"
 
     def description(self):
-        return "test_description"
+        return "description"
 
     def synopsis(self, query):
-        return "test_synopsis" + query
+        return "synopsis_" + query
 
     def defaultTrigger(self):
-        return "test_trigger"
+        return "trigger"
 
     def allowTriggerRemap(self):
         return False
@@ -1060,104 +970,150 @@ class Handler(GlobalQueryHandler):
     def supportsFuzzyMatching(self):
         return True
 
-    def items(self, ctx):
-
-        # To be tested:
-        # 1. super().items
-        # 2. rankItems
-        # 3. usage scoring
-        # 4. lazySort
-
-        yield from super().items(context=ctx)  # 1.
-
-        rank_items = self.rankItems(context=ctx)  # 2.
-
-        rank_items = [
-            RankItem(item=make_test_standard_item(3), score=.001),
-            RankItem(item=make_test_standard_item(2), score=.01)
-        ]
-        ctx.usage_scoring.apply(extension_id=self.id(), rank_items=rank_items)  # 3.
-        yield from self.lazySort(rank_items=rank_items)  #4.
-
+    def setFuzzyMatching(self, fuzzy):
+        pass
 
     def rankItems(self, context):
-        return [
-            RankItem(item=make_test_standard_item(1), score=.1),
-            RankItem(item=make_test_standard_item(0), score=1.)
-        ]
+        return [RankItem(item=make_test_standard_item(0), score=1.)]
 )");
 
-    testPythonExtensionApi(py_inst);
-    testPythonQueryHandlerApi(py_inst);
+    auto native = python.cast<GlobalQueryHandler*>();
 
-    py::gil_scoped_release release;
+    standardExtensionTrampolineTest(native);
+    standardGeneratorQueryHandlerTrampolineTest(native);
+    standardGlobalQueryHandlerTrampolineTest(native);
 
-    testCppExtensionApi(cpp_inst);
-    testCppQueryHandlerApi(cpp_inst);
-    testCppQueryExecution(cpp_inst, {{0, 1}, {2, 3}});
-    testCppItemGenerator(cpp_inst, {{0, 1}, {2, 3}});  // Assumes batch size 10
-    testCppRankItems(cpp_inst, {{0, 1.}, {1, .1}});
+    // CALLING BASE
+
+    auto ctx = make_unique<MockQueryContext>(python.cast<QueryHandler*>(), "", "x");
+    auto gen = python.attr("items")((QueryContext*)ctx.get());
+    auto list = gen.attr("__next__")();
+    QCOMPARE(py::len(list), 1);
+    QCOMPARE(list.cast<vector<shared_ptr<Item>>>()[0]->id(), "id_0");
+    QVERIFY_THROWS_EXCEPTION(py::error_already_set, gen.attr("__next__")());
+
+}
+
+//==================================================================================================
+
+static void standardIndexQueryHandlerBindingsTest(py::object object)
+{
+    QCOMPARE(object.attr("supportsFuzzyMatching")().cast<bool>(), true);
+
+    // QVERIFY_THROWS_NO_EXCEPTION(object.attr("setFuzzyMatching")(true));
+
+    QVERIFY_THROWS_EXCEPTION(exception, object.attr("updateIndexItems")(true));
+
+    vector<IndexItem> index_items{{makeTestItem(0), "x"}};
+    QVERIFY_THROWS_NO_EXCEPTION(object.attr("setIndexItems")(py::cast(index_items)));
+}
+
+static void standardIndexQueryHandlerTrampolineTest(IndexQueryHandler *handler)
+{
+    QVERIFY_THROWS_NO_EXCEPTION(handler->updateIndexItems());
 }
 
 void PythonTests::testIndexQueryHandler()
 {
-    auto [py_inst, cpp_inst] = makeTestClass<IndexQueryHandler>(R"(
-class Handler(IndexQueryHandler):
+    // BINDINGS
+
+    class : public IndexQueryHandler {
+        QString id() const override { return "id"; }
+        QString name() const override { return "name"; }
+        QString description() const override { return "description"; }
+        QString synopsis(const QString& query) const override { return "synopsis_" + query; }
+        QString defaultTrigger() const override { return "trigger"; }
+        bool allowTriggerRemap() const override { return false; }
+        void updateIndexItems() override { setIndexItems({IndexItem(makeTestItem(0), u"x"_s)}); }
+    } impl;
+    impl.setFuzzyMatching(false);  // required to populate the index
+
+    auto python = py::cast((IndexQueryHandler*)&impl);  // IMPORTANT! type must be base type
+
+    standardExtensionBindingsTest(python);
+    standardGeneratorQueryHandlerBindingsTest(python);
+    standardGlobalQueryHandlerBindingsTest(python);
+    standardIndexQueryHandlerBindingsTest(python);
+
+    // TRAMPOLINE
+
+    python = instantiateClass(R"(
+class Class(IndexQueryHandler):
 
     def id(self):
-        return "test_id"
+        return "id"
 
     def name(self):
-        return "test_name"
+        return "name"
 
     def description(self):
-        return "test_description"
+        return "description"
 
     def synopsis(self, query):
-        return "test_synopsis" + query
+        return "synopsis_" + query
 
     def defaultTrigger(self):
-        return "test_trigger"
+        return "trigger"
 
     def allowTriggerRemap(self):
         return False
 
-    def items(self, ctx):
-        yield from super().items(context=ctx)  # Default implementation call
-        yield from self.lazySort([
-            RankItem(item=make_test_standard_item(4), score=.125),
-            RankItem(item=make_test_standard_item(3), score=.25)
-        ])
-
-    def rankItems(self, ctx):
-        rank_items = super().rankItems(context=ctx)  # Default implementation call
-        rank_items.append(RankItem(item=make_test_standard_item(2), score=.25))
-        return rank_items
-
     def updateIndexItems(self):
         self.setIndexItems(index_items=[
-            IndexItem(item=make_test_standard_item(0), string="0"),
-            IndexItem(item=make_test_standard_item(1), string="00")
+            IndexItem(item=make_test_standard_item(0), string="x")
         ])
 )");
-    cpp_inst->setFuzzyMatching(false);  // required to populate the index
 
-    testPythonExtensionApi(py_inst);
-    testPythonQueryHandlerApi(py_inst);
+    auto native = python.cast<IndexQueryHandler*>();
+    native->setFuzzyMatching(false);  // required to populate the index
 
-    py::gil_scoped_release release;
+    standardExtensionTrampolineTest(native);
+    standardGeneratorQueryHandlerTrampolineTest(native);
+    standardGlobalQueryHandlerTrampolineTest(native);
+    standardIndexQueryHandlerTrampolineTest(native);
 
-    testCppExtensionApi(cpp_inst);
-    testCppQueryHandlerApi(cpp_inst);
-    testCppQueryExecution(cpp_inst, {{0, 1, 2}, {3, 4}}, "0");
-    testCppItemGenerator(cpp_inst, {{0, 1, 2}, {3, 4}}, "0");
-    testCppRankItems(cpp_inst, {{0, 1.}, {1, .5}, {2, .25}}, "0");
+    // CALLING BASE
+
+    auto ctx = make_unique<MockQueryContext>(python.cast<QueryHandler*>(), "", "x");
+    auto gen = python.attr("items")((QueryContext*)ctx.get());
+    auto chunk = gen.attr("__next__")();
+    QCOMPARE(py::len(chunk), 1);
+    QCOMPARE(chunk.cast<vector<shared_ptr<Item>>>()[0]->id(), "id_0");
+    QVERIFY_THROWS_EXCEPTION(py::error_already_set, gen.attr("__next__")());
+
+    py::list rank_items = python.attr("rankItems")((QueryContext*)ctx.get());
+    QCOMPARE(py::len(rank_items), 1);
+    auto rank_item = rank_items[0].cast<RankItem>();
+    QCOMPARE(rank_item.item->id(), "id_0");
+    QCOMPARE(rank_item.score, 1.);
 }
+
+//==================================================================================================
 
 void PythonTests::testFallbackQueryHandler()
 {
-    auto [py_inst, cpp_inst] = makeTestClass<FallbackHandler>(R"(
-class Handler(FallbackHandler):
+    // BINDINGS
+
+    class : public FallbackHandler {
+        QString id() const override { return "id"; }
+        QString name() const override { return "name"; }
+        QString description() const override { return "description"; }
+        vector<shared_ptr<Item>>
+        fallbacks(const QString &) const override { return {makeTestItem(0)}; }
+    } impl;
+
+    auto python = py::cast((FallbackHandler*)&impl);  // IMPORTANT! type must be base type
+
+    standardExtensionBindingsTest(python);
+
+    py::list py_list = python.attr("fallbacks")(""_s);
+    QCOMPARE(py::len(py_list), 1);
+    QCOMPARE(py_list[0].cast<shared_ptr<Item>>()->id(), "id_0");
+
+    // TRAMPOLINE
+
+    python = instantiateClass(R"(
+class Class(FallbackHandler):
 
     def id(self):
         return "test_id"
@@ -1169,12 +1125,13 @@ class Handler(FallbackHandler):
         return "test_description"
 
     def fallbacks(self, s):
-        return [make_test_standard_item(1)]
+        return [make_test_standard_item(0)]
 )");
 
-    testPythonExtensionApi(py_inst);
+    auto native = python.cast<FallbackHandler*>();
 
-    auto fallbacks = cpp_inst->fallbacks("test");
+    auto fallbacks = native->fallbacks({});
     QCOMPARE(fallbacks.size(), 1);
-    test_test_item(fallbacks[0].get(), 1);
+    QCOMPARE(fallbacks[0]->id(), "id_0");
 }
+
