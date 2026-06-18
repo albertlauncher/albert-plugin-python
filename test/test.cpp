@@ -545,14 +545,20 @@ void PythonTests::testRankItem()
 
 void PythonTests::testIndexItem()
 {
-    auto py_test_standard_item = py_make_test_standard_item(1);
-    auto py_test_index_item = PyIndexItem("item"_a=py_test_standard_item,
-                                          "string"_a="index_item_text");
+    auto python = PyIndexItem("item"_a=py_make_test_standard_item(0), "string"_a="x");
+    auto &native = python.cast<IndexItem&>();
 
-    auto index_item = py_test_index_item.cast<unique_ptr<IndexItem>>();  // disowns
+    QCOMPARE(python.attr("item").cast<shared_ptr<Item>>()->id(), "id_0");
+    QCOMPARE(python.attr("string").cast<QString>(), "x");
 
-    test_test_item(index_item->item.get(), 1);
-    QCOMPARE(index_item->string, "index_item_text");
+    python.attr("item") = py_make_test_standard_item(1);
+    python.attr("string") = "y";
+
+    QCOMPARE(python.attr("item").cast<shared_ptr<Item>>()->id(), "id_1");
+    QCOMPARE(python.attr("string").cast<QString>(), "y");
+
+    QCOMPARE(native.item->id(), "id_1");
+    QCOMPARE(native.string, "y");
 }
 
 void PythonTests::testMatcher()

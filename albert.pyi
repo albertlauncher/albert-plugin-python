@@ -79,6 +79,8 @@ Changelog
     - Rename ``isValid`` to ``is_valid``
   - Class ``RankItem``
     - Add property access again (has been removed in 4.0)
+  - Class ``IndexItem``
+    - Add property access again (has been removed in 4.0)
   - Class ``GeneratorQueryHandler``
     - Remove static method ``lazySort(rank_items: List[RankItem]) -> Generator[List[Item]]``
     - Add method ``lazySort(rank_items: List[RankItem], usage_scoring: UsageScoring | None = None)
@@ -624,6 +626,16 @@ class IndexItem:
                  item: Item,
                  string: str):
         ...
+
+    item: Item
+    """
+    The item to be indexed.
+    """
+
+    string: str
+    """
+    The corresponding lookup string.
+    """
 
 
 class UsageScoring:

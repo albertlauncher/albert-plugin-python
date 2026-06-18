@@ -481,9 +481,16 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     // Do not expose members to avoid unnecessary casts
     py::classh<IndexItem>(m, "IndexItem")
-        .def(py::init<shared_ptr<Item>,QString>(),
+        .def(py::init<shared_ptr<Item>, QString>(),
              py::arg("item"),
              py::arg("string"))
+
+        .def_readwrite("item",
+                       &IndexItem::item)
+
+        .def_readwrite("string",
+                       &IndexItem::string)
+
         ;
 
     py::class_<IndexQueryHandler,
