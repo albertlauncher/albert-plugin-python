@@ -423,7 +423,8 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
         // PURE VIRTUAL
         .def("items",
-             &GeneratorQueryHandler::items,
+             [](GeneratorQueryHandler &self, QueryContext &ctx)
+             { return PyItemGeneratorWrapper(self.items(ctx)); },
              py::arg("context"))
         ;
 
