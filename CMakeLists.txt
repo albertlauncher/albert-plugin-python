@@ -22,7 +22,7 @@ target_sources(${PROJECT_NAME} PRIVATE albert.pyi)
 install(
     DIRECTORY "plugins/"
     DESTINATION "${CMAKE_INSTALL_DATADIR}/albert/${PROJECT_NAME}/plugins"
-    REGEX "plugins\\/\\..+" EXCLUDE  # exclude hidden files
+    REGEX "(^|/)\\.[^/]+" EXCLUDE  # any path component starting with a dot, any depth
     PATTERN "__pycache__" EXCLUDE
     PATTERN "*.md" EXCLUDE
 )
