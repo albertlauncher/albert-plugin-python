@@ -361,7 +361,7 @@ public:
     void onFuzzyMatchingChanged(bool enabled) override
     { PYBIND11_OVERRIDE(void, Base, onFuzzyMatchingChanged, enabled); }
 
-    // unique_ptr<QueryExecution> execution(QueryContext &context) override
+    // unique_ptr<QueryExecution> execution(QueryContext context) override
     // { PYBIND11_OVERRIDE_PURE(unique_ptr<QueryExecution>, Base, execution, &context); }
 };
 
@@ -372,7 +372,7 @@ class ItemGeneratorWrapper
     py::function fn_next;
 
 public:
-    ItemGeneratorWrapper(py::function override, QueryContext &ctx)
+    ItemGeneratorWrapper(py::function override, QueryContext ctx)
     {
         py::gil_scoped_acquire acquire;
 
@@ -415,7 +415,7 @@ public:
         return nullopt;
     }
 
-    static ItemGenerator generator(py::function fn_items, QueryContext &ctx)
+    static ItemGenerator generator(py::function fn_items, QueryContext ctx)
     {
         ItemGeneratorWrapper generator(::move(fn_items), ctx);
         while (auto next = generator.next())
@@ -430,7 +430,7 @@ protected:
 
 public:
     // No type mismatch workaround required since base class is not called.
-    ItemGenerator items(QueryContext &context) override
+    ItemGenerator items(QueryContext context) override
     {
         py::gil_scoped_acquire a;
         auto override = py::get_override(this, "items");
@@ -452,7 +452,7 @@ class PyGlobalQueryHandler : public PyGeneratorQueryHandler<Base>
     // PyGeneratorQueryHandler | overrides "pure"
     // PyGlobalQueryHandler    | calls will throw "call to pure" error
     //
-    ItemGenerator items(QueryContext &context) override
+    ItemGenerator items(QueryContext context) override
     {
         {
             py::gil_scoped_acquire a;
@@ -463,12 +463,12 @@ class PyGlobalQueryHandler : public PyGeneratorQueryHandler<Base>
         return Base::items(context);
     }
 
-    vector<RankItem> rankItems(QueryContext &context) override
+    vector<RankItem> rankItems(QueryContext context) override
     {
         py::gil_scoped_acquire a;
         auto override = py::get_override(this, "rankItems");
         if (override)
-            return vectorFromPyObject<RankItem>(override(&context));
+            return vectorFromPyObject<RankItem>(override(context));
         throw runtime_error("Pure virtual function \"rankItems\"");
     }
 };
@@ -489,13 +489,13 @@ public:
     // PyGlobalQueryHandler | overrides "pure"
     // PyIndexQueryHandler  | calls will throw "call to pure" error
     //
-    vector<RankItem> rankItems(QueryContext &context) override
+    vector<RankItem> rankItems(QueryContext context) override
     {
         {
             py::gil_scoped_acquire a;
             auto override = py::get_override(this, "rankItems");
             if (override)
-                return vectorFromPyObject<RankItem>(override(&context));
+                return vectorFromPyObject<RankItem>(override(context));
         }
         return Base::rankItems(context);
     }
