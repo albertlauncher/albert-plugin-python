@@ -325,9 +325,8 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
         ;
 
-    py::class_<QueryContext,
-               unique_ptr<QueryContext, py::nodelete>
-               >(m, "QueryContext")
+
+    py::classh<QueryContext>(m, "QueryContext")
 
         .def_property_readonly("trigger",
                                &QueryContext::trigger)
@@ -423,7 +422,7 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
         // PURE VIRTUAL
         .def("items",
-             [](GeneratorQueryHandler &self, QueryContext &ctx)
+             [](GeneratorQueryHandler &self, QueryContext ctx)
              { return PyItemGeneratorWrapper(self.items(ctx)); },
              py::arg("context"))
 
@@ -466,7 +465,7 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
         // BASE IMPLEMENTATION
         .def("items",
-             [](GlobalQueryHandler &self, QueryContext &ctx)
+             [](GlobalQueryHandler &self, QueryContext ctx)
              { return PyItemGeneratorWrapper(self.items(ctx)); },
              py::arg("context"))
 
