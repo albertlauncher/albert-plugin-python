@@ -177,6 +177,15 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     // ------------------------------------------------------------------------
 
+    // Do not expose members to avoid unnecessary casts
+    py::classh<RankItem>(m, "RankItem")
+        .def(py::init<shared_ptr<Item>, double>(),
+             py::arg("item"),
+             py::arg("score"))
+        ;
+
+    // ------------------------------------------------------------------------
+
     py::classh<StandardItem, Item>(m, "StandardItem")
         .def(py::init<QString, QString, QString, function<unique_ptr<Icon>()>, vector<Action>, QString>(),
              py::arg("id") = QString(),
@@ -429,42 +438,11 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
              [](GeneratorQueryHandler &self, QueryContext &ctx)
              { return PyItemGeneratorWrapper(self.items(ctx)); },
              py::arg("context"))
-        ;
-
-    // ------------------------------------------------------------------------
-
-    // Do not expose members to avoid unnecessary casts
-    py::classh<RankItem>(m, "RankItem")
-        .def(py::init<shared_ptr<Item>, double>(),
-             py::arg("item"),
-             py::arg("score"))
-        ;
-
-    py::class_<RankedQueryHandler,
-               GeneratorQueryHandler,
-               PyRankedQueryHandler<>,
-               unique_ptr<RankedQueryHandler,
-                          TrampolineDeleter<RankedQueryHandler,
-                                            PyRankedQueryHandler<>>>
-               >(m, "RankedQueryHandler")
-
-        .def(py::init<>())
-
-        // BASE IMPLEMENTATION
-        .def("items",
-             [](RankedQueryHandler &self, QueryContext *ctx) {
-                 return PyItemGeneratorWrapper(self.items(*ctx));
-             },
-             py::arg("context"))
-
-        // PURE VIRTUAL
-        .def("rankItems",
-             &RankedQueryHandler::rankItems,
-             py::arg("context"))
 
         .def_static("lazySort",
                     [](vector<RankItem> rank_items) {
-                        return PyItemGeneratorWrapper(RankedQueryHandler::lazySort(::move(rank_items)));
+                        // FIXME: This introces copies when passing language boundaries
+                        return PyItemGeneratorWrapper(GeneratorQueryHandler::lazySort(::move(rank_items)));
                     },
                     py::arg("rank_items"))
 
@@ -473,7 +451,7 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
     // ------------------------------------------------------------------------
 
     py::class_<GlobalQueryHandler,
-               RankedQueryHandler,
+               GeneratorQueryHandler,
                PyGlobalQueryHandler<>,
                unique_ptr<GlobalQueryHandler,
                           TrampolineDeleter<GlobalQueryHandler,
@@ -481,6 +459,18 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
                >(m, "GlobalQueryHandler")
 
         .def(py::init<>())
+
+        // BASE IMPLEMENTATION
+        .def("items",
+             [](GlobalQueryHandler &self, QueryContext *ctx) {
+                 return PyItemGeneratorWrapper(self.items(*ctx));
+             },
+             py::arg("context"))
+
+        // PURE VIRTUAL
+        .def("rankItems",
+             &GlobalQueryHandler::rankItems,
+             py::arg("context"))
 
         ;
 

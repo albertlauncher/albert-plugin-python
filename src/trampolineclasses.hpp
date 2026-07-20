@@ -445,63 +445,19 @@ public:
         else
             throw runtime_error("Pure virtual function \"items\"");
     }
-
-    // //
-    // // This is required due to the "final" quirks of the pybind trampoline chain
-    // //
-    // // QueryHandler            | declares pure
-    // // GeneratorQueryHandler   | overrides "final"
-    // // PyQueryHandler          | overrides "pure" on python side
-    // // PyGeneratorQueryHandler | calls will throw "call to pure" error
-    // //
-    // unique_ptr<QueryExecution> execution(QueryContext &context) override
-    // {
-    //     // PyBind does not suport passing reference, but instead tries to copy.
-    //     // Workaround by converting to pointer.
-    //     // This is needed because PYBIND11_OVERRIDE_PURE would introduce type mismatch.
-    //     PYBIND11_OVERRIDE_IMPL(unique_ptr<QueryExecution>, Base, "execution", &context);  // returns on success
-    //     return Base::execution(context);  // otherwise call base class
-    // }
-};
-
-template <class Base = RankedQueryHandler>
-class PyRankedQueryHandler : public PyGeneratorQueryHandler<Base>
-{
-public:
-    // No type mismatch workaround required since base class is not called.
-    vector<RankItem> rankItems(QueryContext &context) override
-    { PYBIND11_OVERRIDE_PURE(vector<RankItem>, Base, rankItems, &context); }
-
-    //
-    // This is required due to the "final" quirks of the pybind trampoline chain
-    //
-    // GeneratorQueryHandler   | declares pure
-    // RankedQueryHandler      | overrides "final"
-    // PyGeneratorQueryHandler | overrides "pure" on python side
-    // PyRankedQueryHandler    | calls will throw "call to pure" error
-    //
-    ItemGenerator items(QueryContext &context) override
-    {
-        auto fn_items_override = getOverrideLocked(this, "items");
-        if (fn_items_override)
-            // ! This move releases the py object, such that GIL is not required on destruction
-            return ItemGeneratorWrapper::generator(::move(fn_items_override), context);
-        else
-            return Base::items(context);
-    }
 };
 
 
 template <class Base = GlobalQueryHandler>
-class PyGlobalQueryHandler : public PyRankedQueryHandler<Base>
+class PyGlobalQueryHandler : public PyGeneratorQueryHandler<Base>
 {
     //
     // This is required due to the "final" quirks of the pybind trampoline chain
     //
     // GeneratorQueryHandler   | declares pure
-    // RankedQueryHandler      | overrides "final"
+    // GlobalQueryHandler      | overrides "final"
     // PyGeneratorQueryHandler | overrides "pure" on python side
-    // PyRankedQueryHandler    | calls will throw "call to pure" error
+    // PyGlobalQueryHandler    | calls will throw "call to pure" error
     //
     ItemGenerator items(QueryContext &context) override
     {

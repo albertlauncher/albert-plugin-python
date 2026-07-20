@@ -67,6 +67,7 @@ Changelog
 
 - ``6.0``
 
+  - Drop class ``RankedQueryHandler``
   - Class ``UsageScoring``
     - Remove method ``modifyMatchScores(self, extension_id: str, rank_items: list[RankItem])``.
     - Add method ``applied(self, extension_id: str, rank_items: list[RankItem]) -> list[RankItem]``.
@@ -789,22 +790,22 @@ class GeneratorQueryHandler(QueryHandler):
         Note: Executed in a background thread.
         """
 
+    @staticmethod
+    def lazySort(rank_items: List[RankItem]) -> Generator[List[Item]]:
+        """
+        Yields **rank_items** lazily sorted.
+        """
 
-class RankedQueryHandler(GeneratorQueryHandler):
+
+class GlobalQueryHandler(GeneratorQueryHandler):
     """
-    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1RankedQueryHandler.html>`_
+    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1GlobalQueryHandler.html>`_
     """
 
     def items(self, context: QueryContext) -> Generator[List[Item]]:
         """
         Implements ``GeneratorQueryHandler.items()``.
         Yields result of ``rankItems`` for **context** usage scored and lazily sorted.
-        """
-
-    @staticmethod
-    def lazySort(self, rank_items: List[RankItem]) -> Generator[List[Item]]:
-        """
-        Yields **rank_items** lazily sorted.
         """
 
     @abstractmethod
@@ -818,12 +819,6 @@ class RankedQueryHandler(GeneratorQueryHandler):
 
         Note: Executed in a background thread.
         """
-
-
-class GlobalQueryHandler(RankedQueryHandler):
-    """
-    `C++ Reference <https://albertlauncher.github.io/reference/classalbert_1_1GlobalQueryHandler.html>`_
-    """
 
 
 class IndexQueryHandler(GlobalQueryHandler):

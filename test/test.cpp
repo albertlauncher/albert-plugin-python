@@ -932,7 +932,7 @@ static void testCppItemGenerator(GeneratorQueryHandler* handler,
     }
 }
 
-static void testCppRankItems(RankedQueryHandler* handler,
+static void testCppRankItems(GlobalQueryHandler* handler,
                              vector<pair<int, double>> expected,
                              const char* query = "")
 {
@@ -993,58 +993,6 @@ class Handler(GeneratorQueryHandler):
     testCppItemGenerator(cpp_inst,  {{1}, {1, 2}, {1, 2, 3}});
 }
 
-void PythonTests::testRankedQueryHandler()
-{
-    auto [py_inst, cpp_inst] = makeTestClass<RankedQueryHandler>(R"(
-class Handler(RankedQueryHandler):
-
-    def id(self):
-        return "test_id"
-
-    def name(self):
-        return "test_name"
-
-    def description(self):
-        return "test_description"
-
-    def synopsis(self, query):
-        return "test_synopsis" + query
-
-    def defaultTrigger(self):
-        return "test_trigger"
-
-    def allowTriggerRemap(self):
-        return False
-
-    def supportsFuzzyMatching(self):
-        return True
-
-    def items(self, ctx):
-        yield from super().items(context=ctx)  # Default implementation call
-        yield from self.lazySort([
-            RankItem(item=make_test_standard_item(3), score=.125),
-            RankItem(item=make_test_standard_item(2), score=.25)
-        ])
-
-    def rankItems(self, context):
-        return [
-            RankItem(item=make_test_standard_item(1), score=.5),
-            RankItem(item=make_test_standard_item(0), score=1.)
-        ]
-)");
-
-    testPythonExtensionApi(py_inst);
-    testPythonQueryHandlerApi(py_inst);
-
-    py::gil_scoped_release release;
-
-    testCppExtensionApi(cpp_inst);
-    testCppQueryHandlerApi(cpp_inst);
-    testCppQueryExecution(cpp_inst, {{0, 1}, {2, 3}});
-    testCppItemGenerator(cpp_inst, {{0, 1}, {2, 3}});  // Assumes batch size 10
-    testCppRankItems(cpp_inst, {{0, 1.}, {1, .5}});
-}
-
 void PythonTests::testGlobalQueryHandler()
 {
     auto [py_inst, cpp_inst] = makeTestClass<GlobalQueryHandler>(R"(
@@ -1072,15 +1020,28 @@ class Handler(GlobalQueryHandler):
         return True
 
     def items(self, ctx):
-        yield from super().items(context=ctx)  # Default implementation call
-        yield from self.lazySort([
-            RankItem(item=make_test_standard_item(3), score=.125),
-            RankItem(item=make_test_standard_item(2), score=.25)
-        ])
+
+        # To be tested:
+        # 1. super().items
+        # 2. rankItems
+        # 3. usage scoring
+        # 4. lazySort
+
+        yield from super().items(context=ctx)  # 1.
+
+        rank_items = self.rankItems(context=ctx)  # 2.
+
+        rank_items = [
+            RankItem(item=make_test_standard_item(3), score=.001),
+            RankItem(item=make_test_standard_item(2), score=.01)
+        ]
+        ctx.usage_scoring.apply(extension_id=self.id(), rank_items=rank_items)  # 3.
+        yield from self.lazySort(rank_items=rank_items)  #4.
+
 
     def rankItems(self, context):
         return [
-            RankItem(item=make_test_standard_item(1), score=.5),
+            RankItem(item=make_test_standard_item(1), score=.1),
             RankItem(item=make_test_standard_item(0), score=1.)
         ]
 )");
@@ -1094,7 +1055,7 @@ class Handler(GlobalQueryHandler):
     testCppQueryHandlerApi(cpp_inst);
     testCppQueryExecution(cpp_inst, {{0, 1}, {2, 3}});
     testCppItemGenerator(cpp_inst, {{0, 1}, {2, 3}});  // Assumes batch size 10
-    testCppRankItems(cpp_inst, {{0, 1.}, {1, .5}});
+    testCppRankItems(cpp_inst, {{0, 1.}, {1, .1}});
 }
 
 void PythonTests::testIndexQueryHandler()

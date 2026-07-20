@@ -26,7 +26,6 @@ private slots:
 
     // void testQueryHandler();
     void testGeneratorQueryHandler();
-    void testRankedQueryHandler();
     void testGlobalQueryHandler();
     void testIndexQueryHandler();
     void testFallbackQueryHandler();
