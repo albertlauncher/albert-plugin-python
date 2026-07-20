@@ -23,7 +23,7 @@ public:
     void initialize() override;
 
     QWidget* buildConfigWidget() override;
-    std::vector<albert::PluginLoader*> plugins() override;
+    std::vector<albert::PluginLoader*> plugins() const override;
 
     bool checkPackages(const QStringList &packages) const;
     void installPackages(const QStringList &packages) const;

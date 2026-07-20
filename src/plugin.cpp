@@ -301,7 +301,7 @@ vector<unique_ptr<PyPluginLoader>> Plugin::scanPlugins() const
     return plugins;
 }
 
-vector<PluginLoader*> Plugin::plugins()
+vector<PluginLoader*> Plugin::plugins() const
 {
     vector<PluginLoader*> plugins;
     for (auto &plugin : loaders_)
