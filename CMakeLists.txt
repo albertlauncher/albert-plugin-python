@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(python VERSION 9.2.0)
+project(python VERSION 9.3.0)
 
 find_package(Albert REQUIRED)
 find_package(QCoro6 REQUIRED COMPONENTS Coro)
