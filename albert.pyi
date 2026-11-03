@@ -250,7 +250,11 @@ class Action:
     def __init__(self,
                  id: str,
                  text: str,
-                 callable: Callable):
+                 callable: Callable,
+                 hide_on_activation: bool = True):
+        """
+        If hide_on_activation is False, the window stays open after the action ran.
+        """
         ...
 
 

@@ -141,13 +141,16 @@ PYBIND11_EMBEDDED_MODULE(albert, m)
 
     py::class_<Action>(m, "Action")
 
-        .def(py::init([](QString id, QString text, const py::object &callable) {
+        .def(py::init([](QString id, QString text, const py::object &callable,
+                         bool hide_on_activation) {
                  py::gil_scoped_acquire acquire;
-                 return Action(::move(id), ::move(text), GilAwareFunctor(callable));
+                 return Action(::move(id), ::move(text), GilAwareFunctor(callable),
+                               hide_on_activation);
              }),
              py::arg("id"),
              py::arg("text"),
-             py::arg("callable"))
+             py::arg("callable"),
+             py::arg("hide_on_activation") = true)
         ;
 
     // ------------------------------------------------------------------------
