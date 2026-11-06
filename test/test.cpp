@@ -913,6 +913,35 @@ static void testCppQueryExecution(QueryHandler* handler,
     QCOMPARE(exec->canFetchMore(), false);
 }
 
+static void testCppQueryExecutionFetchMoreOnResultsInserted(QueryHandler* handler,
+                                                            vector<vector<int>> expected,
+                                                            const char* query = "")
+{
+    auto ctx = MockQueryContext(handler, "", query);
+    auto exec = handler->execution(ctx);
+
+    QObject::connect(&exec->results, &QueryResults::resultsInserted, exec.get(), [exec=exec.get()]{
+        exec->fetchMore();
+    });
+
+    uint expected_item_count = 0;
+    for (const auto &batch : expected)
+        expected_item_count += batch.size();
+
+    exec->fetchMore();
+
+    QTRY_COMPARE(exec->results.count(), expected_item_count);
+    QTRY_COMPARE(exec->canFetchMore(), false);
+
+    uint item_count = 0;
+    for (const auto &batch : expected)
+    {
+        for (size_t i = 0; i < batch.size(); ++i)
+            test_test_item(exec->results[item_count + i].item.get(), batch[i]);
+        item_count += batch.size();
+    }
+}
+
 static void testCppItemGenerator(GeneratorQueryHandler* handler,
                                  vector<vector<int>> expected,
                                  const char* query = "")
@@ -990,6 +1019,7 @@ class Handler(GeneratorQueryHandler):
     testCppExtensionApi(cpp_inst);
     testCppQueryHandlerApi(cpp_inst);
     testCppQueryExecution(cpp_inst, {{1}, {1, 2}, {1, 2, 3}});
+    testCppQueryExecutionFetchMoreOnResultsInserted(cpp_inst, {{1}, {1, 2}, {1, 2, 3}});
     testCppItemGenerator(cpp_inst,  {{1}, {1, 2}, {1, 2, 3}});
 }
 
